@@ -250,11 +250,11 @@ const deptList=()=>(teamNames&&teamNames.length)?teamNames:DEPTS;
    <key>_report_hour, <key>_report_recipient and a matching send_log kind.
    kind: 'form' = staff form + reminder + summary; 'hubspot' = pulled from HubSpot. */
 const REGISTRY=[
-  {id:'corp-weekly',   dept:'Corporate', name:'Corporate Department Weekly Report', short:'Weekly Report', freq:'Weekly', kind:'form', prefix:'',
+  {id:'corp-weekly',   dept:'Corporate', name:'Billing & Workload Report', short:'Billing & Workload', freq:'Weekly', kind:'form', prefix:'',
     api:{subs:'admin_list_submissions',dash:'admin_dashboard_data',admins:'admin_list_admins',active:'admin_set_active',rename:'admin_set_name',trigger:'admin_trigger'}},
   {id:'expired-report',dept:'Corporate', name:'Expired Subscriptions', short:'Expired Subscriptions', freq:'Weekly', kind:'hubspot',
     sched:{dk:'expired_report_day',hk:'expired_report_hour',dd:'Fri',dh:'9'}},
-  {id:'sales-weekly',  dept:'Sales', name:'Sales Department Weekly Report', short:'Weekly Report', freq:'Weekly', kind:'form', prefix:'sales_',
+  {id:'sales-weekly',  dept:'Sales', name:'Conversions & Workload Report', short:'Conversions & Workload', freq:'Weekly', kind:'form', prefix:'sales_',
     api:{subs:'sales_list_submissions',dash:'sales_dashboard_data',admins:'sales_list_admins',active:'sales_set_active',rename:'sales_set_name',trigger:'sales_trigger'}},
   {id:'sales-deals',   dept:'Sales', name:'Sales Deals Report', short:'Deals Report', freq:'Weekly', kind:'hubspot',
     sched:{dk:'sales_deals_report_day',hk:'sales_deals_report_hour',dd:'Wed',dh:'8'}},
