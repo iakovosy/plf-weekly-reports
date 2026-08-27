@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sales Department Weekly Report — Philippou Law Firm</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="https://mmtzrsfnucwgjcixbzqa.supabase.co/functions/v1/logo?v=3">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--blue:#4F75FF;--navy:#27548A;--grey:#E2DDD9;--dgrey:#B3B3B3;--off:#F2F2F2;--ink:#101418}
+*{box-sizing:border-box;margin:0}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--off);color:var(--ink);min-height:100vh}
+.wrap{max-width:680px;margin:0 auto;padding:28px 18px 60px}
+.mast{background:var(--blue);border-radius:14px 14px 0 0;padding:24px 28px;color:#fff;display:flex;align-items:center;gap:18px}
+.mast img{width:56px;height:56px;border-radius:10px;display:block}
+.mast .firm{font-size:11px;letter-spacing:3px;color:#EAF0FF;font-weight:600}
+.mast h1{font-size:21px;font-weight:700;margin-top:5px;line-height:1.25}
+.mast .sub{font-size:13px;color:#EAF0FF;margin-top:5px}
+.card{background:#fff;border:1px solid var(--grey);border-top:0;border-radius:0 0 14px 14px;padding:30px}
+.section{margin-bottom:34px}
+.section h2{font-size:12px;letter-spacing:2px;color:var(--blue);font-weight:700;text-transform:uppercase;border-bottom:2px solid var(--blue);display:inline-block;padding-bottom:5px;margin-bottom:18px}
+.q{margin-bottom:22px}
+.q label.main{display:block;font-size:14px;font-weight:600;margin-bottom:4px}
+.q .hint{font-size:12px;color:#6b7280;margin-bottom:10px;line-height:1.5}
+input[type=text],textarea{width:100%;border:1.5px solid var(--grey);border-radius:9px;padding:11px 13px;font:inherit;font-size:14px;background:#fff}
+input[type=text]:focus,textarea:focus{outline:none;border-color:var(--blue)}
+textarea{min-height:96px;resize:vertical}
+.scale{display:flex;gap:6px;flex-wrap:wrap}
+.scale button{flex:1;min-width:40px;padding:11px 0;border:1.5px solid var(--grey);background:#fff;border-radius:8px;font:inherit;font-size:14px;font-weight:600;cursor:pointer;color:#444}
+.scale button.sel{background:var(--blue);color:#fff;border-color:var(--blue)}
+.yn{display:flex;gap:10px}
+.yn button{padding:10px 30px;border:1.5px solid var(--grey);background:#fff;border-radius:8px;font:inherit;font-size:14px;font-weight:600;cursor:pointer;color:#444}
+.yn button.sel{background:var(--blue);color:#fff;border-color:var(--blue)}
+.scale-labels{display:flex;justify-content:space-between;font-size:11px;color:var(--dgrey);margin-top:6px}
+.submit{width:100%;background:var(--blue);color:#fff;border:0;border-radius:10px;padding:15px;font:inherit;font-size:15px;font-weight:700;cursor:pointer;margin-top:6px}
+.submit:hover{background:#3f63e8}.submit:disabled{opacity:.6;cursor:default}
+.err{color:#b00020;font-size:13px;margin-top:10px;display:none}
+.state{text-align:center;padding:70px 20px;font-size:15px;color:#555}
+.done{text-align:center;padding:60px 24px}
+.done .tick{width:64px;height:64px;border-radius:50%;background:var(--blue);color:#fff;font-size:30px;line-height:64px;margin:0 auto 18px}
+.done h2{font-size:20px;color:var(--navy);margin-bottom:8px}
+.done p{font-size:14px;color:#555}
+.foot{text-align:center;font-size:11px;color:var(--dgrey);margin-top:22px}
+.hidden{display:none}
+.reqmark{color:#b00020}
+@media(max-width:520px){.card{padding:22px 18px}.mast{padding:20px 20px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="mast">
+    <img src="https://mmtzrsfnucwgjcixbzqa.supabase.co/functions/v1/logo?v=3" alt="PLF">
+    <div>
+      <div class="firm">PHILIPPOU LAW FIRM</div>
+      <h1>Sales Department Weekly Report</h1>
+      <div class="sub" id="subline">Loading…</div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="state" id="loading">Loading your report…</div>
+    <div class="state hidden" id="badtoken">This report link is invalid or has expired.<br>Please use the link from your most recent email.</div>
+
+    <form id="form" class="hidden" onsubmit="return false">
+      <div class="section">
+        <h2>Section 1 · Workload</h2>
+        <div class="q">
+          <label class="main">1. Current workload capacity <span class="reqmark">*</span></label>
+          <div class="hint">How full is your workload right now, from 1 (very light) to 10 (at full capacity)?</div>
+          <div class="scale" id="workload"></div>
+          <div class="scale-labels"><span>1 · Light</span><span>10 · Full capacity</span></div>
+        </div>
+      </div>
+
+      <div class="section">
+        <h2>Section 2 · Conversions</h2>
+        <div class="q">
+          <label class="main">2. Number of conversions secured this week <span class="reqmark">*</span></label>
+          <div class="hint">Enter the total number of client conversions you secured this week (enter 0 if none).</div>
+          <input type="text" id="conversions" placeholder="0">
+        </div>
+        <div class="q">
+          <label class="main">3. Number of company registration conversions this week <span class="reqmark">*</span></label>
+          <div class="hint">Of those, how many were company registration conversions? (enter 0 if none).</div>
+          <input type="text" id="company_reg_conversions" placeholder="0">
+        </div>
+      </div>
+
+      <div class="section">
+        <h2>Section 3 · Assistance</h2>
+        <div class="q">
+          <label class="main">4. Do you require any assistance? <span class="reqmark">*</span></label>
+          <div class="yn" data-field="needs_assistance"><button type="button" data-v="true">Yes</button><button type="button" data-v="false">No</button></div>
+        </div>
+        <div class="q hidden" id="subject_wrap">
+          <label class="main">5. If yes, on what subject? <span class="reqmark">*</span></label>
+          <div class="hint">Let us know what you need support with, so it can be raised at the meeting.</div>
+          <textarea id="assistance_subject"></textarea>
+        </div>
+      </div>
+
+      <div class="section">
+        <h2>Section 4 · Additional Notes / Feedback</h2>
+        <div class="q">
+          <label class="main">6. Additional notes or feedback for improvement</label>
+          <div class="hint">Any comments, blockers, or suggestions to help us improve — optional.</div>
+          <textarea id="additional_notes" placeholder="Optional"></textarea>
+        </div>
+      </div>
+
+      <button class="submit" id="submitBtn">Submit Sales report</button>
+      <div class="err" id="err"></div>
+    </form>
+
+    <div class="done hidden" id="done">
+      <div class="tick">✓</div>
+      <h2>Report submitted</h2>
+      <p>Thank you. Your answers have been recorded and will be included in the weekly Sales summary.</p>
+    </div>
+  </div>
+  <div class="foot">All Rights Reserved © Philippou Law Firm</div>
+</div>
+
+<script type="module">
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+const sb = createClient('https://mmtzrsfnucwgjcixbzqa.supabase.co','sb_publishable_4LJjfpjIa1tBlIuTAE4kGg_xOv6f5Of');
+const params = new URLSearchParams(location.search);
+const token = params.get('token');
+const $ = id => document.getElementById(id);
+const state = { workload_capacity:null, needs_assistance:null };
+
+for(let i=1;i<=10;i++){const b=document.createElement('button');b.type='button';b.textContent=i;b.onclick=()=>{state.workload_capacity=i;[...$('workload').children].forEach(c=>c.classList.toggle('sel',+c.textContent===i))};$('workload').appendChild(b);}
+document.querySelectorAll('.yn').forEach(g=>{g.querySelectorAll('button').forEach(b=>{b.onclick=()=>{const v=b.dataset.v==='true';state[g.dataset.field]=v;g.querySelectorAll('button').forEach(x=>x.classList.toggle('sel',x===b));if(g.dataset.field==='needs_assistance')$('subject_wrap').classList.toggle('hidden',!v);};});});
+
+async function load(){
+  if(!token){$('loading').classList.add('hidden');$('badtoken').classList.remove('hidden');$('subline').textContent='';return;}
+  const {data,error}=await sb.rpc('get_sales_report_by_token',{p_token:token});
+  if(error||!data){$('loading').classList.add('hidden');$('badtoken').classList.remove('hidden');$('subline').textContent='';return;}
+  const d=new Date(data.report_date+'T00:00:00');
+  $('subline').textContent=`${data.admin_name} · Week of ${d.toLocaleDateString('en-GB')} · Due Tuesday 17:30`;
+  if(data.status==='submitted'&&data.data){prefill(data.data);}
+  $('loading').classList.add('hidden');
+  if(data.status==='submitted'){$('done').classList.remove('hidden');}
+  else{$('form').classList.remove('hidden');}
+}
+function prefill(d){
+  if(d.workload_capacity){state.workload_capacity=+d.workload_capacity;[...$('workload').children].forEach(c=>c.classList.toggle('sel',+c.textContent===+d.workload_capacity));}
+  if(d.needs_assistance!==undefined&&d.needs_assistance!==null){const v=(d.needs_assistance===true||d.needs_assistance==='true');state.needs_assistance=v;const g=document.querySelector('.yn[data-field="needs_assistance"]');g.querySelectorAll('button').forEach(b=>b.classList.toggle('sel',(b.dataset.v==='true')===v));if(v)$('subject_wrap').classList.remove('hidden');}
+  for(const f of ['conversions','company_reg_conversions','assistance_subject','additional_notes']){if(d[f])$(f).value=d[f];}
+}
+function fail(m){const e=$('err');e.textContent=m;e.style.display='block';e.scrollIntoView({behavior:'smooth',block:'center'});}
+$('submitBtn').onclick=async()=>{
+  $('err').style.display='none';
+  if(!state.workload_capacity)return fail('Please select your workload capacity (1–10).');
+  if(!$('conversions').value.trim())return fail('Please enter the number of conversions this week (use 0 if none).');
+  if(!$('company_reg_conversions').value.trim())return fail('Please enter the number of company registration conversions (use 0 if none).');
+  if(state.needs_assistance===null)return fail('Please answer: Do you require any assistance? (Yes/No).');
+  if(state.needs_assistance===true&&!$('assistance_subject').value.trim())return fail('Please specify the subject you need assistance with.');
+  $('submitBtn').disabled=true;$('submitBtn').textContent='Submitting…';
+  const payload={
+    workload_capacity:String(state.workload_capacity),
+    conversions:$('conversions').value,
+    company_reg_conversions:$('company_reg_conversions').value,
+    needs_assistance:state.needs_assistance?'true':'false',
+    assistance_subject:state.needs_assistance===true?$('assistance_subject').value:'',
+    additional_notes:$('additional_notes').value};
+  const {error}=await sb.rpc('submit_sales_report',{p_token:token,p:payload});
+  $('submitBtn').disabled=false;$('submitBtn').textContent='Submit Sales report';
+  if(error)return fail('Something went wrong while submitting. Please try again.');
+  $('form').classList.add('hidden');$('done').classList.remove('hidden');window.scrollTo({top:0,behavior:'smooth'});
+};
+load();
+</script>
+</body>
+</html>
