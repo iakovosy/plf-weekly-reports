@@ -27,3 +27,4 @@ To roll back: Vercel → Deployments → promote a previous deployment, or
 Forms and the console talk to Supabase (project `mmtzrsfnucwgjcixbzqa`):
 Postgres RPCs + edge functions (weekly report emails, HubSpot reports).
 The edge-function sources are managed in Supabase, not in this repo.
+Connected to Vercel.
