@@ -243,19 +243,29 @@ async function rpc(fn,args){const {data,error}=await sb.rpc(fn,{p_pass:pass,...a
 const DEPTS=['Corporate','Sales','Accounting','Property','Immigration','Probate'];
 let teamNames=null;
 const deptList=()=>(teamNames&&teamNames.length)?teamNames:DEPTS;
-const DEPTREPORTS={Corporate:[{id:'corp-weekly',name:'Weekly Report'},{id:'expired-report',name:'Expired Subscriptions'}],Sales:[{id:'sales-weekly',name:'Weekly Report'},{id:'sales-deals',name:'Deals Report'}]};
-const ALLREPORTS={
-  'corp-weekly':{dept:'Corporate',name:'Corporate Department Weekly Report'},
-  'sales-weekly':{dept:'Sales',name:'Sales Department Weekly Report'},
-  'general-weekly':{dept:'Firm-wide',name:'Weekly Workload Check-in'},
-  'expired-report':{dept:'Corporate',name:'Expired Subscriptions'},
-  'sales-deals':{dept:'Sales',name:'Sales Deals Report'}
-};
-const RCFG={
-  'corp-weekly':{prefix:null,api:{subs:'admin_list_submissions',dash:'admin_dashboard_data',admins:'admin_list_admins',active:'admin_set_active',rename:'admin_set_name',trigger:'admin_trigger'}},
-  'sales-weekly':{prefix:'sales',api:{subs:'sales_list_submissions',dash:'sales_dashboard_data',admins:'sales_list_admins',active:'sales_set_active',rename:'sales_set_name',trigger:'sales_trigger'}},
-  'general-weekly':{prefix:'general',api:{subs:'general_list_submissions',dash:'general_dashboard_data',admins:'general_list_admins',active:'general_set_active',rename:'general_set_name',trigger:'general_trigger'}}
-};
+/* ---------- Report registry ----------
+   ONE row per report. Adding a report = add a row here (plus a PAGES entry if it
+   has a custom page). The sidebar, report view and schedules table all derive
+   from this list. Convention for NEW reports: settings keys <key>_report_day,
+   <key>_report_hour, <key>_report_recipient and a matching send_log kind.
+   kind: 'form' = staff form + reminder + summary; 'hubspot' = pulled from HubSpot. */
+const REGISTRY=[
+  {id:'corp-weekly',   dept:'Corporate', name:'Corporate Department Weekly Report', short:'Weekly Report', freq:'Weekly', kind:'form', prefix:'',
+    api:{subs:'admin_list_submissions',dash:'admin_dashboard_data',admins:'admin_list_admins',active:'admin_set_active',rename:'admin_set_name',trigger:'admin_trigger'}},
+  {id:'expired-report',dept:'Corporate', name:'Expired Subscriptions', short:'Expired Subscriptions', freq:'Weekly', kind:'hubspot',
+    sched:{dk:'expired_report_day',hk:'expired_report_hour',dd:'Fri',dh:'9'}},
+  {id:'sales-weekly',  dept:'Sales', name:'Sales Department Weekly Report', short:'Weekly Report', freq:'Weekly', kind:'form', prefix:'sales_',
+    api:{subs:'sales_list_submissions',dash:'sales_dashboard_data',admins:'sales_list_admins',active:'sales_set_active',rename:'sales_set_name',trigger:'sales_trigger'}},
+  {id:'sales-deals',   dept:'Sales', name:'Sales Deals Report', short:'Deals Report', freq:'Weekly', kind:'hubspot',
+    sched:{dk:'sales_deals_report_day',hk:'sales_deals_report_hour',dd:'Wed',dh:'8'}},
+  {id:'general-weekly',dept:'Firm-wide', name:'Weekly Workload Check-in', short:'Weekly Workload Check-in', freq:'Weekly', kind:'form', prefix:'general_',
+    api:{subs:'general_list_submissions',dash:'general_dashboard_data',admins:'general_list_admins',active:'general_set_active',rename:'general_set_name',trigger:'general_trigger'}}
+];
+const PAGES={'expired-report':()=>loadExpired(),'sales-deals':()=>loadSalesDeals()};
+const ALLREPORTS=Object.fromEntries(REGISTRY.map(r=>[r.id,r]));
+const RCFG=Object.fromEntries(REGISTRY.filter(r=>r.kind==='form').map(r=>[r.id,{api:r.api}]));
+const DEPTREPORTS={};
+REGISTRY.filter(r=>r.dept!=='Firm-wide').forEach(r=>{(DEPTREPORTS[r.dept]=DEPTREPORTS[r.dept]||[]).push({id:r.id,name:r.short});});
 const isSales=()=>curReport==='sales-weekly';
 const isGeneral=()=>curReport==='general-weekly';
 const api=k=>RCFG[curReport]?.api[k];
@@ -336,16 +346,10 @@ function renderMain(){
   $('settingsView').classList.add('hidden');
   const rep=curReport?ALLREPORTS[curReport]:null;
   $('crumb').innerHTML=rep?`${rep.dept} / <b>${rep.name}</b>`:(curDept?`<b>${curDept}</b>`:'');
-  if(curReport==='expired-report'){
+  if(rep&&rep.kind==='hubspot'){
     $('reportView').classList.add('hidden');
     $('deptView').classList.remove('hidden');
-    loadExpired();
-    return;
-  }
-  if(curReport==='sales-deals'){
-    $('reportView').classList.add('hidden');
-    $('deptView').classList.remove('hidden');
-    loadSalesDeals();
+    (PAGES[rep.id]||(()=>{}))();
     return;
   }
   if(rep&&RCFG[curReport]){
@@ -573,19 +577,11 @@ $('addTeamBtn').onclick=async()=>{
 };
 
 /* ---------- Settings: Reports & Schedules ---------- */
-const SCHEDGROUPS=[
-  {dept:'Corporate',reports:[
-    {name:'Corporate Department Weekly Report',p:''},
-    {name:'Expired Subscriptions',so:{dk:'expired_report_day',hk:'expired_report_hour',dd:'Fri',dh:'9'}}
-  ]},
-  {dept:'Sales',reports:[
-    {name:'Sales Department Weekly Report',p:'sales_'},
-    {name:'Sales Deals Report',so:{dk:'sales_deals_report_day',hk:'sales_deals_report_hour',dd:'Wed',dh:'8'}}
-  ]},
-  {dept:'Firm-wide',reports:[
-    {name:'Weekly Workload Check-in',p:'general_'}
-  ]}
-];
+/* Schedules table is generated from the registry — rows shown as "Name (Frequency)". */
+const SCHEDGROUPS=[...new Set(REGISTRY.map(r=>r.dept))].map(dept=>({dept,
+  reports:REGISTRY.filter(r=>r.dept===dept).map(r=>r.kind==='form'
+    ?{name:`${r.name} (${r.freq})`,p:r.prefix}
+    :{name:`${r.name} (${r.freq})`,so:r.sched})}));
 const EVENTS=[{k:'forms',l:'Forms sent'},{k:'reminder',l:'Reminder to non-submitters'},{k:'report',l:'Report sent'}];
 let cfgSettings={};
 function daySelHtml(key,v){return `<select data-sk="${key}">`+DAYS.map(d=>`<option value="${d}"${d===v?' selected':''}>${DAYNAMES[d]}</option>`).join('')+'</select>';}
