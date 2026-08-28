@@ -17,7 +17,7 @@ import { cyprusNow, prettifyOrDash, prettyDate } from "../_shared/time.ts";
 import { getSettings, splitRecipients, unauthorized } from "../_shared/settings.ts";
 import { sendEmail } from "../_shared/email.ts";
 import { alreadyLogged, inScheduleWindow, logError, markSent } from "../_shared/schedule.ts";
-import { fetchOwners, fetchStageLabels, hsSearch } from "../_shared/hubspot.ts";
+import { fetchOwners, fetchPipeline, hsSearch } from "../_shared/hubspot.ts";
 import {
   COLORS,
   createDoc,
@@ -229,7 +229,7 @@ Deno.serve(async (req) => {
         ],
         limit: 100,
       }),
-      fetchStageLabels(token, "tickets", pipeline),
+      fetchPipeline(token, "tickets", pipeline),
     ]);
 
     // Excluded stages may be given as labels or as raw stage ids.
@@ -237,9 +237,9 @@ Deno.serve(async (req) => {
     const excludeTerms = excludeRawStr.split(",").map((s: string) => s.trim().toLowerCase()).filter(Boolean);
     const excludedIds = new Set<string>();
     if (excludeTerms.length) {
-      for (const [id, label] of pipeInfo.stages.entries()) {
+      for (const [id, st] of pipeInfo.stages.entries()) {
         if (
-          excludeTerms.includes(String(label).toLowerCase()) ||
+          excludeTerms.includes(String(st.label).toLowerCase()) ||
           excludeTerms.includes(String(id).toLowerCase())
         ) excludedIds.add(String(id));
       }
@@ -259,7 +259,7 @@ Deno.serve(async (req) => {
         days,
         renewal: p.subscription_renewal_status || "-",
         stageId: String(p.hs_pipeline_stage),
-        stage: pipeInfo.stages.get(String(p.hs_pipeline_stage)) || raw(p.hs_pipeline_stage),
+        stage: pipeInfo.stages.get(String(p.hs_pipeline_stage))?.label || raw(p.hs_pipeline_stage),
         ownerId: String(p.hubspot_owner_id || ""),
       };
     });

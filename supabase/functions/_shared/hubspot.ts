@@ -41,20 +41,28 @@ export async function hsSearch(
   return out;
 }
 
-// Stage id -> label for a pipeline. Returns empty on failure rather than
-// throwing: a missing label degrades the report, it should not kill the run.
-export async function fetchStageLabels(
+export type Stage = { label: string; order: number };
+
+// Pipeline name plus its stages by id. `order` matters to the sales deals
+// report, which needs to know which stages come at or after "Quote sent".
+//
+// Returns an empty result on failure rather than throwing: a missing label
+// degrades a report, it should not kill the run. Callers supply their own
+// fallback name via `pipeInfo.label || "..."`.
+export async function fetchPipeline(
   token: string,
   objectType: "tickets" | "deals",
   pipeline: string,
-): Promise<{ label: string; stages: Map<string, string> }> {
+): Promise<{ label: string; stages: Map<string, Stage> }> {
   try {
     const res = await hsFetch(token, `/crm/v3/pipelines/${objectType}/${pipeline}`);
-    const map = new Map<string, string>();
-    for (const s of (res.stages || [])) map.set(String(s.id), s.label);
+    const map = new Map<string, Stage>();
+    (res.stages || []).forEach((s: any, i: number) =>
+      map.set(String(s.id), { label: s.label, order: s.displayOrder ?? i })
+    );
     return { label: res.label as string, stages: map };
   } catch (_e) {
-    return { label: "", stages: new Map<string, string>() };
+    return { label: "", stages: new Map<string, Stage>() };
   }
 }
 

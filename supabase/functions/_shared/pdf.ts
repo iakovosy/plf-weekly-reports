@@ -39,6 +39,8 @@ export const COLORS = {
   onBlue: rgb(0.92, 0.94, 1),
   muted: rgb(0.6, 0.6, 0.6),
   note: rgb(0.45, 0.45, 0.45),
+  // Slightly stronger than `soft`, for a summary table's TOTAL row.
+  totalRow: rgb(0.88, 0.91, 1),
 };
 
 // Brand colours as hex, for the HTML half of each report.
