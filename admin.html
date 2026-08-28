@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Reports Portal — Philippou Law Firm</title>
+<title>Reports Portal â€” Philippou Law Firm</title>
 <meta name="robots" content="noindex">
 <link rel="icon" href="https://mmtzrsfnucwgjcixbzqa.supabase.co/functions/v1/logo?v=3">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -48,7 +48,7 @@
 
           <div class="panel hidden" id="set-users">
             <div class="sechead">Add a user</div>
-            <p class="note2">Everyone in the directory automatically receives the firm-wide Weekly Workload Check-in — that is not a team. The department you pick decides which additional report they get.</p>
+            <p class="note2">Everyone in the directory automatically receives the firm-wide Weekly Workload Check-in â€” that is not a team. The department you pick decides which additional report they get.</p>
             <div class="row" style="margin-bottom:10px">
               <input id="newUserFirst" placeholder="First name" autocomplete="off" style="min-width:150px">
               <input id="newUserLast" placeholder="Last name" autocomplete="off" style="min-width:150px">
@@ -58,7 +58,7 @@
             </div>
             <div class="sechead" style="margin-top:30px">Directory</div>
             <div class="row">
-              <input id="userSearch" placeholder="Search name or email…" style="min-width:230px">
+              <input id="userSearch" placeholder="Search name or emailâ€¦" style="min-width:230px">
               <select id="teamFilter"><option value="">All departments</option></select>
               <span style="font-size:12.5px;color:#888" id="userCount"></span>
             </div>
@@ -68,7 +68,7 @@
 
           <div class="panel hidden" id="set-teams">
             <div class="sechead">Departments</div>
-            <p class="note2">Departments with a live report are locked — deleting one would break that report's mailing list. Click a name to rename it. The firm-wide check-in has no department because everyone receives it.</p>
+            <p class="note2">Departments with a live report are locked â€” deleting one would break that report's mailing list. Click a name to rename it. The firm-wide check-in has no department because everyone receives it.</p>
             <div class="tablewrap" id="teamsTable"></div>
             <div class="row" style="margin-top:16px">
               <input id="newTeamName" placeholder="New department (e.g. Litigation)" style="min-width:250px">
@@ -79,7 +79,7 @@
 
           <div class="panel hidden" id="set-schedules">
             <div class="sechead">Reports &amp; schedules</div>
-            <p class="note2">All times are Cyprus time and are evaluated on the hour — changes take effect immediately, with no redeploy. The reminder only goes to people who haven't submitted yet.</p>
+            <p class="note2">All times are Cyprus time and are evaluated on the hour â€” changes take effect immediately, with no redeploy. The reminder only goes to people who haven't submitted yet.</p>
             <div class="tablewrap" id="schedTable"></div>
             <div class="row" style="margin-top:16px"><button class="btn" id="saveSched">Save schedules</button></div>
             <div class="msg" id="schedMsg"></div>
@@ -87,9 +87,9 @@
 
           <div class="panel hidden" id="set-recipients">
             <div class="sechead">Summary recipients</div>
-            <p class="note2">Who receives each consolidated summary email and PDF. Every report supports multiple recipients — add or remove people below; click a name to edit it.</p>
+            <p class="note2">Who receives each consolidated summary email and PDF. Every report supports multiple recipients â€” add or remove people below; click a name to edit it.</p>
             <div id="streamRecips"></div>
-            <div class="sechead" style="margin-top:14px">Weekly Workload Check-in — recipient list</div>
+            <div class="sechead" style="margin-top:14px">Weekly Workload Check-in â€” recipient list</div>
             <div class="row">
               <input id="newRecipName2" placeholder="Full name">
               <input id="newRecipEmail2" placeholder="name@philippoulaw.com" style="min-width:240px">
@@ -99,27 +99,15 @@
             <div class="msg" id="recipMsg2"></div>
           </div>
 
-          <div class="panel hidden" id="set-documents">
-            <div class="sechead">Department documents</div>
-            <p class="note2">Reports and records kept against a department. Files are stored privately &mdash; they are never published on the portal, and every download link expires after one hour.</p>
-            <div class="row" id="docDeptTabs" style="margin-bottom:4px"></div>
-            <div class="row" style="align-items:center">
-              <input type="file" id="docFile" style="max-width:340px">
-              <button class="btn" id="docUpload">Upload to this department</button>
-            </div>
-            <div class="msg" id="docMsg"></div>
-            <div class="tablewrap" id="docTable"><p style="font-size:13px;color:#666">Loading&hellip;</p></div>
-          </div>
-
           <div class="panel hidden" id="set-delivery">
             <div class="sechead">Latest summary per report</div>
-            <p class="note2">Compares what the schedule expected against what was actually recorded in the send log. “Not sent” means the run failed or has not happened yet.</p>
+            <p class="note2">Compares what the schedule expected against what was actually recorded in the send log. â€œNot sentâ€ means the run failed or has not happened yet.</p>
             <div class="kpis" id="delStatus"></div>
             <div class="sechead">Email provider</div>
             <div class="field"><label>From address</label><input id="d_from"><div class="note">Must be on a domain verified in Resend (currently philippoutech.com). Shared by all three reports.</div></div>
             <div class="field"><label>Portal URL</label><input id="d_portal"><div class="note">Used to build the tokenised form links in every email.</div></div>
-            <div class="field"><label>Resend API key <span id="d_resendState" style="font-weight:400;color:#666"></span></label><input id="d_resend" type="password" autocomplete="new-password" placeholder="re_… (leave blank to keep)"></div>
-            <div class="field"><label>Brevo API key <span id="d_brevoState" style="font-weight:400;color:#666"></span></label><input id="d_brevo" type="password" autocomplete="new-password" placeholder="xkeysib-… (leave blank to keep)"><div class="note">Only used if set — takes priority over Resend.</div></div>
+            <div class="field"><label>Resend API key <span id="d_resendState" style="font-weight:400;color:#666"></span></label><input id="d_resend" type="password" autocomplete="new-password" placeholder="re_â€¦ (leave blank to keep)"></div>
+            <div class="field"><label>Brevo API key <span id="d_brevoState" style="font-weight:400;color:#666"></span></label><input id="d_brevo" type="password" autocomplete="new-password" placeholder="xkeysib-â€¦ (leave blank to keep)"><div class="note">Only used if set â€” takes priority over Resend.</div></div>
             <div class="row"><button class="btn" id="saveDelivery">Save</button></div>
             <div class="msg" id="delMsg"></div>
             <div class="sechead" style="margin-top:28px">Recent sends</div>
@@ -128,7 +116,7 @@
 
           <div class="panel hidden" id="set-security">
             <div class="sechead">Console passcode</div>
-            <p class="note2">This is the only thing protecting the console — the URL is unlisted but publicly reachable. The same passcode covers all reports, and it is stored in plain text in the database.</p>
+            <p class="note2">This is the only thing protecting the console â€” the URL is unlisted but publicly reachable. The same passcode covers all reports, and it is stored in plain text in the database.</p>
             <div class="field"><label>New passcode</label><input id="sec_pass" type="password" autocomplete="new-password" placeholder="At least 8 characters"></div>
             <div class="field"><label>Confirm new passcode</label><input id="sec_pass2" type="password" autocomplete="new-password"></div>
             <div class="row"><button class="btn" id="savePass">Change passcode</button></div>
@@ -157,8 +145,8 @@
             <div class="row" id="statusFilter" style="margin-bottom:10px">
               <label style="font-size:13px;font-weight:600">Status:</label>
               <button type="button" class="chip sel" data-s="all">All</button>
-              <button type="button" class="chip" data-s="submitted">✅ Submitted</button>
-              <button type="button" class="chip" data-s="pending">❌ Not submitted</button>
+              <button type="button" class="chip" data-s="submitted">âœ… Submitted</button>
+              <button type="button" class="chip" data-s="pending">âŒ Not submitted</button>
             </div>
             <div class="row hidden" id="adminFilter" style="margin-bottom:14px"></div>
             <div class="tablewrap" id="subsTable"><p style="font-size:13px;color:#666">No submissions yet.</p></div>
@@ -173,13 +161,13 @@
             </div>
             <div class="kpis" id="kpis"></div>
             <div class="chartbox" id="cbWork"><h3 id="hWork">Workload capacity over time</h3><div class="chartwrap"><canvas id="chWork"></canvas></div></div>
-            <div class="chartbox" id="cbAmounts"><h3 id="hAmounts">Billing amounts over time (€)</h3><div class="chartwrap"><canvas id="chAmounts"></canvas></div></div>
-            <div class="chartbox" id="cbIncome"><h3 id="hIncome">Estimated income by month (€)</h3><div class="chartwrap"><canvas id="chIncome"></canvas></div></div>
+            <div class="chartbox" id="cbAmounts"><h3 id="hAmounts">Billing amounts over time (â‚¬)</h3><div class="chartwrap"><canvas id="chAmounts"></canvas></div></div>
+            <div class="chartbox" id="cbIncome"><h3 id="hIncome">Estimated income by month (â‚¬)</h3><div class="chartwrap"><canvas id="chIncome"></canvas></div></div>
             <p class="msg" id="dashMsg"></p>
           </div>
 
           <div class="panel hidden" id="tab-admins">
-            <p class="note2">Who this report's form goes to. Add and remove people under the gear icon → <b>Users &amp; Teams</b> — this list follows from their department. Use <b>Send form</b> to email one person immediately.</p>
+            <p class="note2">Who this report's form goes to. Add and remove people under the gear icon â†’ <b>Users &amp; Teams</b> â€” this list follows from their department. Use <b>Send form</b> to email one person immediately.</p>
             <div class="tablewrap" id="adminsTable"></div>
             <div class="msg" id="adminMsg"></div>
           </div>
@@ -188,7 +176,7 @@
       </div>
     </div>
   </div>
-  <div class="foot">All Rights Reserved © Philippou Law Firm</div>
+  <div class="foot">All Rights Reserved Â© Philippou Law Firm</div>
 </div>
 
 <script>
@@ -237,11 +225,11 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 const sb = createClient('https://mmtzrsfnucwgjcixbzqa.supabase.co','sb_publishable_4LJjfpjIa1tBlIuTAE4kGg_xOv6f5Of');
 const $=id=>document.getElementById(id);
 let pass=sessionStorage.getItem('plf_pass')||'';
-const esc=s=>s==null||s===''?'—':String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const esc=s=>s==null||s===''?'â€”':String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 const att=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-const yn=b=>b===true?'Yes':b===false?'No':'—';
+const yn=b=>b===true?'Yes':b===false?'No':'â€”';
 const PALETTE=['#4F75FF','#27548A','#F7C135','#10B981','#EF4444','#8B5CF6','#F97316','#0EA5E9','#84CC16','#EC4899'];
-const eur=n=>n==null?'—':'€'+Math.round(n).toLocaleString('en-GB');
+const eur=n=>n==null?'â€”':'â‚¬'+Math.round(n).toLocaleString('en-GB');
 const DAYS=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 const DAYNAMES={Mon:'Monday',Tue:'Tuesday',Wed:'Wednesday',Thu:'Thursday',Fri:'Friday',Sat:'Saturday',Sun:'Sunday'};
 function parseAmount(s){
@@ -288,7 +276,6 @@ const SETPAGES=[
   {k:'teams',l:'Departments'},
   {k:'schedules',l:'Reports & Schedules'},
   {k:'recipients',l:'Recipients'},
-  {k:'documents',l:'Documents'},
   {k:'delivery',l:'Email & Delivery'},
   {k:'security',l:'Access & Security'}
 ];
@@ -305,7 +292,7 @@ function renderNav(){
   if(curMode==='settings'){
     $('sideHead').textContent='SETTINGS';
     const back=document.createElement('button');
-    back.className='dept backlink';back.type='button';back.textContent='← Back to reports';
+    back.className='dept backlink';back.type='button';back.textContent='â† Back to reports';
     back.onclick=()=>{curMode='browse';curDept=null;curReport='general-weekly';renderNav();renderMain();};
     nav.appendChild(back);
     SETPAGES.forEach(p=>{
@@ -336,6 +323,12 @@ function renderNav(){
         s.onclick=()=>{curReport=(curReport===r.id?null:r.id);renderNav();renderMain();};
         nav.appendChild(s);
       });
+      /* Stored documents sit alongside the department's reports. */
+      const dk=DOCKEY+d;
+      const ds=document.createElement('button');ds.type='button';
+      ds.className='sub'+(dk===curReport?' sel':'');ds.textContent='Documents';
+      ds.onclick=()=>{curReport=(curReport===dk?null:dk);renderNav();renderMain();};
+      nav.appendChild(ds);
     }
   });
 }
@@ -352,12 +345,19 @@ function renderMain(){
     else if(curSetPage==='teams')loadTeamsPage();
     else if(curSetPage==='schedules')loadSchedules();
     else if(curSetPage==='recipients')loadRecipientsPage();
-    else if(curSetPage==='documents')loadDocumentsPage();
     else if(curSetPage==='delivery')loadDelivery();
     return;
   }
   $('gearBtn').classList.remove('on');
   $('settingsView').classList.add('hidden');
+  if(curReport&&curReport.indexOf(DOCKEY)===0){
+    const dept=curReport.slice(DOCKEY.length);
+    $('reportView').classList.add('hidden');
+    $('deptView').classList.remove('hidden');
+    $('crumb').innerHTML=`${esc(dept)} / <b>Documents</b>`;
+    loadDocumentsPage(dept);
+    return;
+  }
   const rep=curReport?ALLREPORTS[curReport]:null;
   $('crumb').innerHTML=rep?`${rep.dept} / <b>${rep.name}</b>`:(curDept?`<b>${curDept}</b>`:'');
   if(rep&&rep.kind==='hubspot'){
@@ -387,8 +387,8 @@ $('gearBtn').onclick=()=>{
 };
 async function loadHome(filterDept){
   const head=filterDept?filterDept:'This week at a glance';
-  const sub=filterDept?`Live status of the ${filterDept} report — click the card to open it.`:'Live status of your active weekly reports.';
-  $('deptView').innerHTML=`<div class="homehead">${esc(head)}</div><div class="homesub">${sub}</div><div class="homegrid" id="homeGrid"><div class="empty" style="grid-column:1/-1">Loading…</div></div>`;
+  const sub=filterDept?`Live status of the ${filterDept} report â€” click the card to open it.`:'Live status of your active weekly reports.';
+  $('deptView').innerHTML=`<div class="homehead">${esc(head)}</div><div class="homesub">${sub}</div><div class="homegrid" id="homeGrid"><div class="empty" style="grid-column:1/-1">Loadingâ€¦</div></div>`;
   try{
     let rows=await rpc('admin_home_overview',{});
     if(filterDept)rows=rows.filter(r=>r.dept===filterDept);
@@ -396,19 +396,19 @@ async function loadHome(filterDept){
     const dtl=d=>d?new Date(d+'T00:00:00').toLocaleDateString('en-GB'):null;
     const cards=rows.map(r=>{
       const live=r.started;
-      const badge=live?'<span class="hbadge live">ACTIVE</span>':`<span class="hbadge soon">STARTS ${dtl(r.start_date)||'—'}</span>`;
+      const badge=live?'<span class="hbadge live">ACTIVE</span>':`<span class="hbadge soon">STARTS ${dtl(r.start_date)||'â€”'}</span>`;
       const pct=r.total?Math.round((r.submitted/r.total)*100):0;
       const body=live
         ? `<div class="hbig">${r.submitted} <small>/ ${r.total} submitted</small></div>
            <div class="hprog"><span style="width:${pct}%"></span></div>
-           <div class="hmeta">${r.week?`Week of <b>${dt(r.week)}</b>`:'Awaiting first submissions'}${r.last_summary?` · Last summary <b>${dt(r.last_summary)}</b>`:''}</div>`
-        : `<div class="hbig" style="color:#bbb">—</div>
+           <div class="hmeta">${r.week?`Week of <b>${dt(r.week)}</b>`:'Awaiting first submissions'}${r.last_summary?` Â· Last summary <b>${dt(r.last_summary)}</b>`:''}</div>`
+        : `<div class="hbig" style="color:#bbb">â€”</div>
            <div class="hmeta">First forms go out <b>${DAYNAMES[r.forms_day]||r.forms_day}, ${dtl(r.start_date)||''}</b></div>`;
       return `<div class="hcard" data-report="${r.id}">
         <div class="htop"><div class="htitle">${esc(r.label)}</div>${badge}</div>
         ${body}
         <div class="hmeta" style="border-top:1px solid var(--off);padding-top:10px">
-          <b>Forms:</b> ${DAYNAMES[r.forms_day]||r.forms_day}s ${String(r.forms_hour).padStart(2,'0')}:00 &nbsp;·&nbsp;
+          <b>Forms:</b> ${DAYNAMES[r.forms_day]||r.forms_day}s ${String(r.forms_hour).padStart(2,'0')}:00 &nbsp;Â·&nbsp;
           <b>Summary:</b> ${DAYNAMES[r.report_day]||r.report_day}s ${String(r.report_hour).padStart(2,'0')}:00</div>
       </div>`;
     }).join('');
@@ -431,7 +431,7 @@ async function loadTeamNames(){
   try{const t=await rpc('admin_list_teams',{});uTeams=t;teamNames=t.map(x=>x.name);renderNav();}catch(e){}
 }
 async function loadUsersTeams(){
-  $('usersTable').innerHTML='<p style="font-size:13px;color:#666">Loading…</p>';
+  $('usersTable').innerHTML='<p style="font-size:13px;color:#666">Loadingâ€¦</p>';
   try{
     uTeams=await rpc('admin_list_teams',{});
     uUsers=await rpc('admin_list_users',{});
@@ -457,9 +457,9 @@ function renderUsersTable(){
   if(!rows.length){$('usersTable').innerHTML='<p style="font-size:13px;color:#666">Nobody matches the current filters.</p>';return;}
   let h='<table><tr><th style="font-size:12px">Name</th><th style="font-size:12px">Email</th><th style="font-size:12px">Departments</th><th style="font-size:12px">Status</th><th></th></tr>';
   for(const u of rows){
-    const tags=u.teams.map(t=>`<span class="utag ${t.active?'':'off'}"><span class="b" data-tog="${u.id}|${t.id}|${t.active?'0':'1'}" title="${t.active?'Receiving this report — click to pause':'Paused — click to resume'}">${esc(t.name)}</span><span class="x" data-rm="${u.id}|${t.id}" title="Remove from department">&times;</span></span>`).join('');
+    const tags=u.teams.map(t=>`<span class="utag ${t.active?'':'off'}"><span class="b" data-tog="${u.id}|${t.id}|${t.active?'0':'1'}" title="${t.active?'Receiving this report â€” click to pause':'Paused â€” click to resume'}">${esc(t.name)}</span><span class="x" data-rm="${u.id}|${t.id}" title="Remove from department">&times;</span></span>`).join('');
     h+=`<tr>
-      <td><input class="uname" data-id="${u.id}" data-orig="${att(u.name)}" value="${att(u.name)}" style="width:100%;min-width:150px;border:1px solid transparent;background:transparent;padding:6px 8px;border-radius:6px;font:inherit;font-size:13px" title="Click to edit — Enter or click away to save"></td>
+      <td><input class="uname" data-id="${u.id}" data-orig="${att(u.name)}" value="${att(u.name)}" style="width:100%;min-width:150px;border:1px solid transparent;background:transparent;padding:6px 8px;border-radius:6px;font:inherit;font-size:13px" title="Click to edit â€” Enter or click away to save"></td>
       <td style="font-size:12.5px">${esc(u.email)}</td>
       <td>${tags}<button class="addbtn" data-add="${u.id}">+ department</button></td>
       <td><span class="pill ${u.active?'ok':'no'}">${u.active?'Active':'Inactive'}</span></td>
@@ -512,7 +512,7 @@ function wireUsersTable(){
     m.style.left=Math.min(r.left+window.scrollX,window.innerWidth-210)+'px';
     m.querySelectorAll('[data-pick]').forEach(d=>d.onclick=async()=>{
       m.remove();
-      try{await rpc('admin_set_user_teams',{p_user_id:u.id,p_team_ids:u.teams.map(x=>x.id).concat([d.dataset.pick])});$('userMsg').textContent='Department assigned — included from the next scheduled send.';loadUsersTeams();}
+      try{await rpc('admin_set_user_teams',{p_user_id:u.id,p_team_ids:u.teams.map(x=>x.id).concat([d.dataset.pick])});$('userMsg').textContent='Department assigned â€” included from the next scheduled send.';loadUsersTeams();}
       catch(e){$('userMsg').textContent='Could not assign department.';}
     });
   });
@@ -537,7 +537,7 @@ $('addUserBtn').onclick=async()=>{
     await rpc('admin_create_user',{p_name:f+' '+l,p_email:em,p_team_ids:t?[t]:[]});
     const tn=t?(uTeams.find(x=>x.id===t)||{}).name:null;
     $('newUserFirst').value='';$('newUserLast').value='';$('newUserEmail').value='';$('newUserTeam').value='';
-    $('userMsg').textContent=`${f} ${l} added — they now receive the firm-wide check-in`+(tn?`, plus the ${tn} report from its next send.`:'.');
+    $('userMsg').textContent=`${f} ${l} added â€” they now receive the firm-wide check-in`+(tn?`, plus the ${tn} report from its next send.`:'.');
     loadUsersTeams();
   }catch(e){$('userMsg').textContent='Could not add user (that email may already exist).';}
 };
@@ -546,7 +546,7 @@ $('teamFilter').addEventListener('change',renderUsersTable);
 
 /* ---------- Settings: Departments ---------- */
 async function loadTeamsPage(){
-  $('teamsTable').innerHTML='<p style="font-size:13px;color:#666">Loading…</p>';
+  $('teamsTable').innerHTML='<p style="font-size:13px;color:#666">Loadingâ€¦</p>';
   try{
     uTeams=await rpc('admin_list_teams',{});
     teamNames=uTeams.map(t=>t.name);
@@ -554,7 +554,7 @@ async function loadTeamsPage(){
     for(const t of uTeams){
       const nameCell=t.report_stream
         ? `<b>${esc(t.name)}</b>`
-        : `<input class="tname2" data-id="${t.id}" data-orig="${att(t.name)}" value="${att(t.name)}" style="width:100%;min-width:140px;border:1px solid transparent;background:transparent;padding:6px 8px;border-radius:6px;font:inherit;font-size:13px" title="Click to edit — Enter or click away to save">`;
+        : `<input class="tname2" data-id="${t.id}" data-orig="${att(t.name)}" value="${att(t.name)}" style="width:100%;min-width:140px;border:1px solid transparent;background:transparent;padding:6px 8px;border-radius:6px;font:inherit;font-size:13px" title="Click to edit â€” Enter or click away to save">`;
       h+=`<tr><td>${nameCell}</td>
         <td>${t.report_stream?`<span class="pill ok">${esc(t.report_stream)}</span>`:'<span class="pill neutral">none</span>'}</td>
         <td>${t.members}</td><td>${t.active_members}</td>
@@ -577,7 +577,7 @@ async function loadTeamsPage(){
     });
     T.querySelectorAll('[data-tdel]').forEach(b=>b.onclick=async()=>{
       const t=uTeams.find(x=>x.id===b.dataset.tdel);
-      if(!confirm(`Delete "${t.name}"? Its ${t.members} member(s) stay in the directory and keep the firm-wide check-in — only the grouping goes.`))return;
+      if(!confirm(`Delete "${t.name}"? Its ${t.members} member(s) stay in the directory and keep the firm-wide check-in â€” only the grouping goes.`))return;
       try{await rpc('admin_delete_team',{p_id:t.id});$('teamMsg').textContent='Department deleted.';loadTeamsPage();}
       catch(e){$('teamMsg').textContent='Could not delete this department.';}
     });
@@ -586,12 +586,12 @@ async function loadTeamsPage(){
 $('addTeamBtn').onclick=async()=>{
   const n=$('newTeamName').value.trim();
   if(!n){$('teamMsg').textContent='Enter a department name.';return;}
-  try{await rpc('admin_create_team',{p_name:n});$('newTeamName').value='';$('teamMsg').textContent='Department created — it now appears in the sidebar too.';loadTeamsPage();}
+  try{await rpc('admin_create_team',{p_name:n});$('newTeamName').value='';$('teamMsg').textContent='Department created â€” it now appears in the sidebar too.';loadTeamsPage();}
   catch(e){$('teamMsg').textContent='Could not create (that name may already exist).';}
 };
 
 /* ---------- Settings: Reports & Schedules ---------- */
-/* Schedules table is generated from the registry — rows shown as "Name (Frequency)". */
+/* Schedules table is generated from the registry â€” rows shown as "Name (Frequency)". */
 const SCHEDGROUPS=[...new Set(REGISTRY.map(r=>r.dept))].map(dept=>({dept,
   reports:REGISTRY.filter(r=>r.dept===dept).map(r=>r.kind==='form'
     ?{name:`${r.name} (${r.freq})`,p:r.prefix}
@@ -601,7 +601,7 @@ let cfgSettings={};
 function daySelHtml(key,v){return `<select data-sk="${key}">`+DAYS.map(d=>`<option value="${d}"${d===v?' selected':''}>${DAYNAMES[d]}</option>`).join('')+'</select>';}
 function hourSelHtml(key,v){let o='';for(let h=0;h<24;h++){o+=`<option value="${h}"${String(h)===String(v)?' selected':''}>${String(h).padStart(2,'0')}:00</option>`;}return `<select data-sk="${key}">${o}</select>`;}
 async function loadSchedules(){
-  $('schedTable').innerHTML='<p style="font-size:13px;color:#666">Loading…</p>';
+  $('schedTable').innerHTML='<p style="font-size:13px;color:#666">Loadingâ€¦</p>';
   try{
     const c=await rpc('admin_portal_config',{});
     cfgSettings=c.settings||{};
@@ -636,19 +636,19 @@ $('saveSched').onclick=async()=>{
       cfgSettings[k]=s.value;n++;
     }
     $('schedMsg').classList.remove('bad');
-    $('schedMsg').textContent=n?`${n} change${n>1?'s':''} saved — active immediately, no redeploy needed.`:'No changes to save.';
-  }catch(e){$('schedMsg').textContent='Could not save — one of those settings was rejected.';$('schedMsg').classList.add('bad');}
+    $('schedMsg').textContent=n?`${n} change${n>1?'s':''} saved â€” active immediately, no redeploy needed.`:'No changes to save.';
+  }catch(e){$('schedMsg').textContent='Could not save â€” one of those settings was rejected.';$('schedMsg').classList.add('bad');}
 };
 
 /* ---------- Settings: Recipients ---------- */
 const SREC=[
   {s:'corporate',l:'Corporate'},
   {s:'sales',l:'Sales'},
-  {s:'expired_owners',l:'Expired Subscriptions — ticket owners',note:'Each person listed here receives a weekly email containing only the expired tickets they own in HubSpot — tickets are matched to them by this email address. Someone who owns no expired tickets that week receives nothing.'}
+  {s:'expired_owners',l:'Expired Subscriptions â€” ticket owners',note:'Each person listed here receives a weekly email containing only the expired tickets they own in HubSpot â€” tickets are matched to them by this email address. Someone who owns no expired tickets that week receives nothing.'}
 ];
 function loadRecipientsPage(){
   $('streamRecips').innerHTML=SREC.map(x=>`
-    <div class="sechead" style="margin-top:14px">${x.l} — recipient list</div>
+    <div class="sechead" style="margin-top:14px">${x.l} â€” recipient list</div>
     ${x.note?`<p class="note2">${x.note}</p>`:''}
     <div class="row">
       <input id="srName-${x.s}" placeholder="Full name">
@@ -669,10 +669,10 @@ function loadRecipientsPage(){
 }
 async function loadStreamRecips(stream){
   const T=$('srTable-'+stream);
-  T.innerHTML='<p style="font-size:13px;color:#666">Loading…</p>';
+  T.innerHTML='<p style="font-size:13px;color:#666">Loadingâ€¦</p>';
   try{
     const list=await rpc('admin_list_stream_recipients',{p_stream:stream});
-    if(!list.length){T.innerHTML='<p style="font-size:13px;color:#666">No recipients — nobody receives this summary.</p>';return;}
+    if(!list.length){T.innerHTML='<p style="font-size:13px;color:#666">No recipients â€” nobody receives this summary.</p>';return;}
     let h='<table><tr><th style="font-size:12px">Name</th><th style="font-size:12px">Email</th><th></th></tr>';
     for(const a of list){
       h+=`<tr><td><input class="sredit" data-id="${a.id}" data-s="${stream}" data-orig="${att(a.name)}" value="${att(a.name)}" style="width:100%;min-width:150px;border:1px solid transparent;background:transparent;padding:6px 8px;border-radius:6px;font:inherit;font-size:13px" title="Click to edit"></td><td style="font-size:12.5px">${esc(a.email)}</td>
@@ -700,10 +700,10 @@ async function loadStreamRecips(stream){
   }catch(e){T.innerHTML='<p class="msg bad">Could not load recipients.</p>';}
 }
 async function loadRecipients2(){
-  $('recipTable2').innerHTML='<p style="font-size:13px;color:#666">Loading…</p>';
+  $('recipTable2').innerHTML='<p style="font-size:13px;color:#666">Loadingâ€¦</p>';
   try{
     const list=await rpc('general_list_recipients',{});
-    if(!list.length){$('recipTable2').innerHTML='<p style="font-size:13px;color:#666">No recipients — nobody receives the check-in summary.</p>';return;}
+    if(!list.length){$('recipTable2').innerHTML='<p style="font-size:13px;color:#666">No recipients â€” nobody receives the check-in summary.</p>';return;}
     let h='<table><tr><th style="font-size:12px">Name</th><th style="font-size:12px">Email</th><th></th></tr>';
     for(const a of list){
       h+=`<tr><td><input class="recipedit2" data-id="${a.id}" data-orig="${att(a.name)}" value="${att(a.name)}" style="width:100%;min-width:150px;border:1px solid transparent;background:transparent;padding:6px 8px;border-radius:6px;font:inherit;font-size:13px" title="Click to edit"></td><td style="font-size:12.5px">${esc(a.email)}</td>
@@ -737,8 +737,16 @@ $('addRecip2').onclick=async()=>{
   catch(err){$('recipMsg2').textContent='Could not add (that email may already exist).';}
 };
 
-/* ---------- Settings: Documents ---------- */
-const DOC_DEPTS=[{k:'corporate',l:'Corporate'},{k:'sales',l:'Sales'},{k:'general',l:'Firm-wide'},{k:'firm',l:'Other'}];
+/* ---------- Department documents ---------- */
+/* curReport is set to DOCKEY + <department name> when the Documents entry is chosen. */
+const DOCKEY='docs::';
+/* Storage folders are a fixed set; map a department name onto one. */
+function docFolderFor(dept){
+  const k=String(dept||'').toLowerCase();
+  if(k.indexOf('corporate')>=0)return 'corporate';
+  if(k.indexOf('sales')>=0)return 'sales';
+  return 'firm';
+}
 let curDocDept='corporate';
 async function docApi(action,extra){
   const r=await fetch(FN_BASE+'/department-files',{method:'POST',headers:{'Content-Type':'application/json'},
@@ -747,28 +755,37 @@ async function docApi(action,extra){
   if(!r.ok)throw new Error(j.error||('HTTP '+r.status));
   return j;
 }
-/* fmtSize is declared further down for the expired-report archive and reused here. */
 /* The function only accepts plain file names, so tidy anything unusual before sending. */
 const safeDocName=n=>String(n).replace(/[^A-Za-z0-9 ._()\-]+/g,'-').replace(/-{2,}/g,'-');
-function loadDocumentsPage(){
-  const tabs=$('docDeptTabs');
-  tabs.innerHTML=DOC_DEPTS.map(d=>`<button class="btn" data-dd="${d.k}"${d.k===curDocDept?' style="background:#4F75FF;color:#fff;border-color:#4F75FF"':''}>${d.l}</button>`).join(' ');
-  tabs.querySelectorAll('[data-dd]').forEach(b=>b.onclick=()=>{curDocDept=b.dataset.dd;$('docMsg').textContent='';loadDocumentsPage();});
+function loadDocumentsPage(dept){
+  curDocDept=docFolderFor(dept);
+  $('deptView').innerHTML=
+    '<div class="panel">'+
+    '<div class="sechead">'+esc(dept)+' &mdash; documents</div>'+
+    '<p class="note2">Reports and records kept against this department. Files are stored privately &mdash; they are never published on the portal &mdash; and every download link expires after one hour.</p>'+
+    '<div class="row" style="align-items:center"><input type="file" id="docFile" style="max-width:340px">'+
+    '<button class="btn" id="docUpload">Upload</button></div>'+
+    '<div class="msg" id="docMsg"></div>'+
+    '<div class="tablewrap" id="docTable"><p style="font-size:13px;color:#666">Loading&hellip;</p></div>'+
+    '</div>';
+  $('docUpload').onclick=doDocUpload;
   loadDocList();
 }
 async function loadDocList(){
   const T=$('docTable');
-  T.innerHTML='<p style="font-size:13px;color:#666">Loading…</p>';
+  if(!T)return;
+  T.innerHTML='<p style="font-size:13px;color:#666">Loading&hellip;</p>';
   try{
     const res=await docApi('list');
     const files=res.files||[];
     if(!files.length){T.innerHTML='<p style="font-size:13px;color:#666">No documents stored for this department yet.</p>';return;}
     let h='<table><tr><th>Document</th><th>Added</th><th>Size</th><th></th></tr>';
     files.forEach(f=>{
-      const when=f.created_at?new Date(f.created_at).toLocaleString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—';
-      h+=`<tr><td>${esc(f.name)}</td><td style="white-space:nowrap">${when}</td><td style="white-space:nowrap">${fmtSize(f.size)}</td>`
-       +`<td style="white-space:nowrap"><button class="btn" data-dget="${att(f.name)}">Download</button> `
-       +`<button class="btn" data-ddel="${att(f.name)}">Remove</button></td></tr>`;
+      const when=f.created_at?new Date(f.created_at).toLocaleString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'\u2014';
+      h+='<tr><td>'+esc(f.name)+'</td><td style="white-space:nowrap">'+when+'</td>'+
+         '<td style="white-space:nowrap">'+fmtSize(f.size)+'</td>'+
+         '<td style="white-space:nowrap"><button class="btn" data-dget="'+att(f.name)+'">Download</button> '+
+         '<button class="btn" data-ddel="'+att(f.name)+'">Remove</button></td></tr>';
     });
     T.innerHTML=h+'</table>';
     T.querySelectorAll('[data-dget]').forEach(b=>b.onclick=async()=>{
@@ -782,12 +799,12 @@ async function loadDocList(){
     });
   }catch(e){T.innerHTML='<p class="msg bad">Could not load the documents.</p>';}
 }
-$('docUpload').onclick=()=>{
+function doDocUpload(){
   const inp=$('docFile'), msg=$('docMsg');
-  const f=inp.files&&inp.files[0];
+  const f=inp&&inp.files&&inp.files[0];
   if(!f){msg.textContent='Choose a file first.';return;}
   if(f.size>25*1024*1024){msg.textContent='That file is larger than 25 MB.';return;}
-  msg.textContent='Uploading…';
+  msg.textContent='Uploading\u2026';
   const fr=new FileReader();
   fr.onload=async()=>{
     try{
@@ -798,20 +815,20 @@ $('docUpload').onclick=()=>{
   };
   fr.onerror=()=>{msg.textContent='Could not read that file.';};
   fr.readAsDataURL(f);
-};
+}
 
 /* ---------- Expired Subscriptions (HubSpot) ---------- */
 const FN_BASE='https://mmtzrsfnucwgjcixbzqa.supabase.co/functions/v1';
-function fmtSize(n){if(n==null||isNaN(n))return '—';if(n>1048576)return (n/1048576).toFixed(1)+' MB';if(n>1024)return Math.round(n/1024)+' KB';return n+' B';}
+function fmtSize(n){if(n==null||isNaN(n))return 'â€”';if(n>1048576)return (n/1048576).toFixed(1)+' MB';if(n>1024)return Math.round(n/1024)+' KB';return n+' B';}
 let expStages=null, expSel=new Set(), expDDWired=false;
 async function loadExpired(){
   $('deptView').innerHTML=`<div class="panel">
-    <div class="sechead">Expired subscriptions — schedule &amp; recipients</div>
-    <p class="note2">A weekly PDF of Annual Corporate Services tickets whose subscription end date has passed, pulled live from HubSpot. Cyprus time; changes apply from the next hourly tick — no redeploy needed.</p>
+    <div class="sechead">Expired subscriptions â€” schedule &amp; recipients</div>
+    <p class="note2">A weekly PDF of Annual Corporate Services tickets whose subscription end date has passed, pulled live from HubSpot. Cyprus time; changes apply from the next hourly tick â€” no redeploy needed.</p>
     <div class="row"><label style="font-size:13px;font-weight:600">Send every:</label><span id="expSched"></span></div>
     <div class="field"><label>Recipients</label><input id="exp_recips" style="max-width:460px" placeholder="name@philippoulaw.com, second@philippoulaw.com"><div class="note">Comma-separated. If left empty, the Corporate summary recipient is used.</div></div>
     <div class="field"><label>Excluded pipeline stages</label>
-      <span id="exp_stageLoad" style="display:block;font-size:13px;color:#666;margin-bottom:6px">Loading stages…</span>
+      <span id="exp_stageLoad" style="display:block;font-size:13px;color:#666;margin-bottom:6px">Loading stagesâ€¦</span>
       <div id="exp_stageDD" class="hidden" style="position:relative;max-width:460px;margin-bottom:6px">
         <button type="button" id="exp_stageBtn" style="width:100%;display:flex;justify-content:space-between;align-items:center;gap:10px;text-align:left;border:1.5px solid var(--grey);border-radius:8px;padding:9px 12px;font:inherit;font-size:13px;background:#fff;cursor:pointer;color:#444"></button>
         <div id="exp_stageMenu" class="hidden" style="position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:50;background:#fff;border:1.5px solid var(--grey);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.10);max-height:260px;overflow-y:auto"></div>
@@ -822,7 +839,7 @@ async function loadExpired(){
     <div class="msg" id="expMsg"></div>
     <div class="sechead" style="margin-top:28px">Weekly PDF archive</div>
     <p class="note2">Every completed run stores its PDF here (previews are not archived).</p>
-    <div class="tablewrap" id="expFiles"><p style="font-size:13px;color:#666">Loading…</p></div>
+    <div class="tablewrap" id="expFiles"><p style="font-size:13px;color:#666">Loadingâ€¦</p></div>
     <div class="msg" id="expFMsg"></div>
   </div>`;
   try{const c=await rpc('admin_portal_config',{});cfgSettings=c.settings||{};}catch(e){}
@@ -844,8 +861,8 @@ async function loadExpired(){
         await rpc('admin_set_setting',{p_key:k,p_value:kv[k]});
         cfgSettings[k]=kv[k];n++;
       }
-      $('expMsg').textContent=n?`${n} change${n>1?'s':''} saved — active from the next hourly tick.`:'No changes to save.';
-    }catch(e){$('expMsg').textContent='Could not save — a value was rejected.';$('expMsg').classList.add('bad');}
+      $('expMsg').textContent=n?`${n} change${n>1?'s':''} saved â€” active from the next hourly tick.`:'No changes to save.';
+    }catch(e){$('expMsg').textContent='Could not save â€” a value was rejected.';$('expMsg').classList.add('bad');}
   };
   loadExpiredStages();
   loadExpiredFiles();
@@ -883,11 +900,11 @@ function renderExpDD(){
   const btn=$('exp_stageBtn'),menu=$('exp_stageMenu');
   if(!btn||!menu||!expStages)return;
   const sel=[...expSel].sort((a,b)=>a-b).map(i=>expStages[i].label);
-  btn.innerHTML=`<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;${sel.length?'':'color:#999'}">${sel.length?sel.map(esc).join(', '):'None excluded — click to select stages'}</span><span style="flex-shrink:0;color:#999">▾</span>`;
+  btn.innerHTML=`<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;${sel.length?'':'color:#999'}">${sel.length?sel.map(esc).join(', '):'None excluded â€” click to select stages'}</span><span style="flex-shrink:0;color:#999">â–¾</span>`;
   menu.innerHTML=expStages.map((s,i)=>{
     const on=expSel.has(i);
     return `<div data-stage="${i}" style="display:flex;align-items:center;gap:10px;padding:9px 14px;font-size:13px;cursor:pointer;${on?'background:#EEF2FF;font-weight:600;color:var(--navy)':''}">
-      <span style="width:16px;height:16px;flex-shrink:0;border-radius:4px;border:1.5px solid ${on?'var(--blue)':'var(--dgrey)'};background:${on?'var(--blue)':'#fff'};color:#fff;font-size:11px;line-height:14px;text-align:center">${on?'✓':''}</span>${esc(s.label)}</div>`;
+      <span style="width:16px;height:16px;flex-shrink:0;border-radius:4px;border:1.5px solid ${on?'var(--blue)':'var(--dgrey)'};background:${on?'var(--blue)':'#fff'};color:#fff;font-size:11px;line-height:14px;text-align:center">${on?'âœ“':''}</span>${esc(s.label)}</div>`;
   }).join('');
   menu.querySelectorAll('[data-stage]').forEach(el=>el.onclick=e=>{
     e.stopPropagation();
@@ -903,15 +920,15 @@ async function loadExpiredFiles(){
     if(!r.ok)throw new Error('list '+r.status);
     const d=await r.json();
     const files=d.files||[];
-    if(!files.length){T.innerHTML='<p style="font-size:13px;color:#666">Nothing archived yet — the first PDF appears after the next scheduled run.</p>';return;}
+    if(!files.length){T.innerHTML='<p style="font-size:13px;color:#666">Nothing archived yet â€” the first PDF appears after the next scheduled run.</p>';return;}
     let h='<table><tr><th style="font-size:12px">File</th><th style="font-size:12px">Created</th><th style="font-size:12px">Size</th><th></th></tr>';
     for(const f of files){
-      h+=`<tr><td>${esc(f.name)}</td><td style="font-size:12.5px">${f.created_at?new Date(f.created_at).toLocaleString('en-GB'):'—'}</td><td>${fmtSize(f.size)}</td>
+      h+=`<tr><td>${esc(f.name)}</td><td style="font-size:12.5px">${f.created_at?new Date(f.created_at).toLocaleString('en-GB'):'â€”'}</td><td>${fmtSize(f.size)}</td>
         <td style="white-space:nowrap"><button class="btn" data-dl="${att(f.name)}">Download</button></td></tr>`;
     }
     h+='</table>';T.innerHTML=h;
     T.querySelectorAll('[data-dl]').forEach(b=>b.onclick=async()=>{
-      const t=b.textContent;b.disabled=true;b.textContent='Preparing…';
+      const t=b.textContent;b.disabled=true;b.textContent='Preparingâ€¦';
       try{
         const r2=await fetch(FN_BASE+'/expired-report-files',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({passcode:pass,action:'url',file:b.dataset.dl})});
         if(!r2.ok)throw new Error('url '+r2.status);
@@ -984,22 +1001,22 @@ async function loadDelivery(){
     $('d_resendState').textContent=c.resend_set?`(saved ${c.resend_hint})`:'(not set)';
     $('d_brevoState').textContent=c.brevo_set?`(saved ${c.brevo_hint})`:'(not set)';
   }catch(e){}
-  $('delLog').innerHTML='<p style="font-size:13px;color:#666">Loading…</p>';
+  $('delLog').innerHTML='<p style="font-size:13px;color:#666">Loadingâ€¦</p>';
   try{
     const d=await rpc('admin_delivery_overview',{});
     $('delStatus').innerHTML=(d.status||[]).map(s=>{
       const lbl=s.label==='General'?'Firm-wide check-in':s.label;
-      if(!s.week)return `<div class="kpi" style="background:var(--off);border-color:var(--dgrey)"><div class="v" style="color:#999">—</div><div class="l">${esc(lbl)}<br><span style="color:#999">not started yet</span></div></div>`;
+      if(!s.week)return `<div class="kpi" style="background:var(--off);border-color:var(--dgrey)"><div class="v" style="color:#999">â€”</div><div class="l">${esc(lbl)}<br><span style="color:#999">not started yet</span></div></div>`;
       const wk=new Date(s.week+'T00:00:00').toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit'});
       const due=`due ${DAYNAMES[s.day]||s.day} ${String(s.hour).padStart(2,'0')}:00`;
       return s.sent
-        ? `<div class="kpi"><div class="v">Sent</div><div class="l">${esc(lbl)} · week of ${wk}<br><span style="color:#999">${due}</span></div></div>`
-        : `<div class="kpi" style="background:#fbe4e7;border-color:#b00020"><div class="v" style="color:#b00020">Not sent</div><div class="l">${esc(lbl)} · week of ${wk}<br><span style="color:#999">${due}</span></div></div>`;
+        ? `<div class="kpi"><div class="v">Sent</div><div class="l">${esc(lbl)} Â· week of ${wk}<br><span style="color:#999">${due}</span></div></div>`
+        : `<div class="kpi" style="background:#fbe4e7;border-color:#b00020"><div class="v" style="color:#b00020">Not sent</div><div class="l">${esc(lbl)} Â· week of ${wk}<br><span style="color:#999">${due}</span></div></div>`;
     }).join('');
     if(!(d.log||[]).length){$('delLog').innerHTML='<p style="font-size:13px;color:#666">Nothing recorded yet.</p>';return;}
     let h='<table><tr><th style="font-size:12px">What</th><th style="font-size:12px">Report week</th><th style="font-size:12px">Recorded</th><th style="font-size:12px">Result</th></tr>';
     for(const r of d.log){h+=`<tr><td>${esc(r.kind)}</td><td>${esc(r.run_date)}</td><td>${esc(r.sent_at)}</td><td><span class="pill ${r.status==='ok'?'ok':'no'}">${r.status==='ok'?'OK':'Partial'}</span></td></tr>`;}
-    h+='</table><p class="note2" style="margin-top:12px">Only completed sends are recorded here. A run that crashed leaves no row — which is why the cards above compare against the schedule instead.</p>';
+    h+='</table><p class="note2" style="margin-top:12px">Only completed sends are recorded here. A run that crashed leaves no row â€” which is why the cards above compare against the schedule instead.</p>';
     $('delLog').innerHTML=h;
   }catch(e){$('delLog').innerHTML='<p class="msg bad">Could not load the delivery log.</p>';}
 }
@@ -1074,7 +1091,7 @@ function buildAdminFilter(){
   box.innerHTML=`
     <label style="font-size:13px;font-weight:600">Filter by person:</label>
     <div style="position:relative">
-      <input id="adminSearch" placeholder="Type a name, click to select…" style="min-width:280px" autocomplete="off">
+      <input id="adminSearch" placeholder="Type a name, click to selectâ€¦" style="min-width:280px" autocomplete="off">
       <div id="adminDrop" style="display:none;position:absolute;top:calc(100% + 4px);left:0;z-index:50;background:#fff;border:1.5px solid var(--grey);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.10);max-height:260px;overflow-y:auto;min-width:300px"></div>
     </div>
     <button class="btn sec" id="adminClear" type="button">Show all</button>
@@ -1102,7 +1119,7 @@ function buildAdminFilter(){
     drop.innerHTML=list.map(n=>{
       const on=!subsAll&&subsSel.has(n);
       return `<div data-n="${esc(n)}" style="display:flex;align-items:center;gap:10px;padding:9px 14px;font-size:13px;cursor:pointer;${on?'background:#EEF2FF;font-weight:600;color:var(--navy)':''}">
-        <span style="width:16px;height:16px;flex-shrink:0;border-radius:4px;border:1.5px solid ${on?'var(--blue)':'var(--dgrey)'};background:${on?'var(--blue)':'#fff'};color:#fff;font-size:11px;line-height:14px;text-align:center">${on?'✓':''}</span>${esc(n)}</div>`;
+        <span style="width:16px;height:16px;flex-shrink:0;border-radius:4px;border:1.5px solid ${on?'var(--blue)':'var(--dgrey)'};background:${on?'var(--blue)':'#fff'};color:#fff;font-size:11px;line-height:14px;text-align:center">${on?'âœ“':''}</span>${esc(n)}</div>`;
     }).join('');
     drop.querySelectorAll('[data-n]').forEach(el=>{
       el.onmousedown=e=>{
@@ -1123,27 +1140,27 @@ function buildAdminFilter(){
 }
 function renderSubsTable(){
   const d=subsData;
-  if(!d||!d.rows||!d.rows.length){$('subsTable').innerHTML='<p style="font-size:13px;color:#666">No submissions yet — use “Send forms now” or wait for the scheduled send.</p>';return;}
+  if(!d||!d.rows||!d.rows.length){$('subsTable').innerHTML='<p style="font-size:13px;color:#666">No submissions yet â€” use â€œSend forms nowâ€ or wait for the scheduled send.</p>';return;}
   const rows=d.rows.filter(r=>(subsAll||subsSel.has(r.admin))&&(subsStatus==='all'||(subsStatus==='submitted'?r.status==='submitted':r.status!=='submitted')));
   if(!rows.length){$('subsTable').innerHTML='<p style="font-size:13px;color:#666">Nobody matches the current filters.</p>';return;}
   let qs;
   if(isGeneral()){
-    qs=[['Status',r=>r.status==='submitted'?'✅ Submitted':'❌ Not submitted',r=>r.status!=='submitted'],
+    qs=[['Status',r=>r.status==='submitted'?'âœ… Submitted':'âŒ Not submitted',r=>r.status!=='submitted'],
       ['1. Workload this week',r=>esc(r.workload),r=>String(r.workload||'').startsWith('100')],
       ['2. Comments',r=>esc(r.comments)]];
   }else if(isSales()){
-    qs=[['Status',r=>r.status==='submitted'?'✅ Submitted':'❌ Not submitted',r=>r.status!=='submitted'],
-      ['1.1 Workload (1–10)',r=>esc(r.workload_capacity),r=>Number(r.workload_capacity)>=8],
+    qs=[['Status',r=>r.status==='submitted'?'âœ… Submitted':'âŒ Not submitted',r=>r.status!=='submitted'],
+      ['1.1 Workload (1â€“10)',r=>esc(r.workload_capacity),r=>Number(r.workload_capacity)>=8],
       ['2.1 Conversions this week',r=>esc(r.conversions)],
       ['2.2 Company reg. conversions',r=>esc(r.company_reg_conversions)],
       ['3.1 Needs assistance',r=>yn(r.needs_assistance),r=>r.needs_assistance===true],
       ['3.2 Assistance subject',r=>esc(r.assistance_subject)],
       ['4.1 Notes / feedback',r=>esc(r.additional_notes)]];
   }else{
-    qs=[['Status',r=>r.status==='submitted'?'✅ Submitted':'❌ Not submitted',r=>r.status!=='submitted'],
-      ['1.1 Workload (1–10)',r=>esc(r.workload_capacity),r=>r.workload_capacity>=8],
+    qs=[['Status',r=>r.status==='submitted'?'âœ… Submitted':'âŒ Not submitted',r=>r.status!=='submitted'],
+      ['1.1 Workload (1â€“10)',r=>esc(r.workload_capacity),r=>r.workload_capacity>=8],
       ['1.2 Needs assistance',r=>yn(r.needs_assistance),r=>r.needs_assistance===true],
-      ['2.1 Outstanding (≤7d)',r=>esc(r.outstanding_amount)],
+      ['2.1 Outstanding (â‰¤7d)',r=>esc(r.outstanding_amount)],
       ['2.2 Total overdue (>7d)',r=>esc(r.total_overdue_amount)],
       ['2.3 Overdue >30d',r=>esc(r.overdue_30_amount)],
       ['2.4 All invoices issued',r=>yn(r.invoices_all_issued),r=>r.invoices_all_issued===false],
@@ -1207,7 +1224,7 @@ function renderDash(){
 
   if(isSales()){
     const kpis=[
-      ['Avg workload',avgW.length?(avgW.reduce((s,r)=>s+Number(r.workload_capacity),0)/avgW.length).toFixed(1)+' / 10':'—'],
+      ['Avg workload',avgW.length?(avgW.reduce((s,r)=>s+Number(r.workload_capacity),0)/avgW.length).toFixed(1)+' / 10':'â€”'],
       ['Need assistance',String(lastRows.filter(r=>r.needs_assistance===true).length)],
       ['Total conversions',String(Math.round(sum('conversions')))],
       ['Company reg. conversions',String(Math.round(sum('company_reg_conversions')))]];
@@ -1224,11 +1241,11 @@ function renderDash(){
     return;
   }
 
-  $('hAmounts').textContent='Billing amounts over time (€)';
+  $('hAmounts').textContent='Billing amounts over time (â‚¬)';
   const kpis=[
-    ['Avg workload',avgW.length?(avgW.reduce((s,r)=>s+r.workload_capacity,0)/avgW.length).toFixed(1)+' / 10':'—'],
+    ['Avg workload',avgW.length?(avgW.reduce((s,r)=>s+r.workload_capacity,0)/avgW.length).toFixed(1)+' / 10':'â€”'],
     ['Need assistance',String(lastRows.filter(r=>r.needs_assistance===true).length)],
-    ['Outstanding ≤7d',eur(sum('outstanding_amount'))],
+    ['Outstanding â‰¤7d',eur(sum('outstanding_amount'))],
     ['Overdue >7d',eur(sum('total_overdue_amount'))],
     ['Overdue >30d',eur(sum('overdue_30_amount'))]];
   $('kpis').innerHTML=kpis.map(([l,v])=>`<div class="kpi"><div class="v">${v}</div><div class="l">${l}<br><span style="color:#999">week of ${label(lastDate)}</span></div></div>`).join('');
@@ -1237,15 +1254,15 @@ function renderDash(){
     datasets:names.map(n=>({label:n,data:dates.map(d=>{const r=find(n,d);return r?r.workload_capacity:null;}),borderColor:colorOf(n),backgroundColor:colorOf(n),tension:.3,spanGaps:true}))}});
   const series=(f)=>dates.map(d=>{const rs=data.filter(r=>r.report_date===d);const vals=rs.map(r=>parseAmount(r[f])).filter(v=>v!=null);return vals.length?vals.reduce((a,b)=>a+b,0):null;});
   mk('chAmounts',{type:'line',options:base,data:{labels:dates.map(label),datasets:[
-    {label:'Outstanding ≤7d',data:series('outstanding_amount'),borderColor:'#4F75FF',backgroundColor:'#4F75FF',tension:.3,spanGaps:true},
+    {label:'Outstanding â‰¤7d',data:series('outstanding_amount'),borderColor:'#4F75FF',backgroundColor:'#4F75FF',tension:.3,spanGaps:true},
     {label:'Overdue >7d',data:series('total_overdue_amount'),borderColor:'#F7C135',backgroundColor:'#F7C135',tension:.3,spanGaps:true},
     {label:'Overdue >30d',data:series('overdue_30_amount'),borderColor:'#EF4444',backgroundColor:'#EF4444',tension:.3,spanGaps:true}]}});
   const months=[...new Set(data.filter(r=>r.estimated_monthly_income).map(r=>r.report_date.slice(0,7)))].sort();
   const incomeOf=(n,mo)=>{const rs=data.filter(r=>r.admin===n&&r.report_date.slice(0,7)===mo&&r.estimated_monthly_income).sort((a,b)=>b.report_date.localeCompare(a.report_date));return rs.length?parseAmount(rs[0].estimated_monthly_income):null;};
   const incomeNames=names.filter(n=>months.some(mo=>incomeOf(n,mo)!=null));
   const monthLbl=mo=>new Date(mo+'-01T00:00:00').toLocaleDateString('en-GB',{month:'short',year:'numeric'});
-  mk('chIncome',{type:'bar',options:{...base,datasets:{bar:{maxBarThickness:46}}},data:{labels:incomeNames.length?incomeNames:['—'],
-    datasets:(months.length?months:['—']).map((mo,i)=>({label:mo==='—'?'—':monthLbl(mo),data:(incomeNames.length?incomeNames:['—']).map(n=>mo==='—'?null:incomeOf(n,mo)),backgroundColor:PALETTE[i%PALETTE.length],categoryPercentage:0.6,barPercentage:0.9}))}});
+  mk('chIncome',{type:'bar',options:{...base,datasets:{bar:{maxBarThickness:46}}},data:{labels:incomeNames.length?incomeNames:['â€”'],
+    datasets:(months.length?months:['â€”']).map((mo,i)=>({label:mo==='â€”'?'â€”':monthLbl(mo),data:(incomeNames.length?incomeNames:['â€”']).map(n=>mo==='â€”'?null:incomeOf(n,mo)),backgroundColor:PALETTE[i%PALETTE.length],categoryPercentage:0.6,barPercentage:0.9}))}});
 }
 
 function chartImage(id){
@@ -1267,9 +1284,9 @@ $('downloadDash').onclick=()=>{
   doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(0,0,0);
   grid.forEach((row,ri)=>row.split('').forEach((ch,ci)=>{if(ch!=='.')doc.text(ch,M+ci*10,26+ri*10);}));
   doc.setTextColor(234,240,255);doc.setFontSize(8);doc.text('PHILIPPOU LAW FIRM',M+70,26);
-  doc.setTextColor(255,255,255);doc.setFontSize(16);doc.text((isSales()?'Sales Department':isGeneral()?'Weekly Workload':'Corporate Department')+' — Dashboard Report',M+70,46);
+  doc.setTextColor(255,255,255);doc.setFontSize(16);doc.text((isSales()?'Sales Department':isGeneral()?'Weekly Workload':'Corporate Department')+' â€” Dashboard Report',M+70,46);
   doc.setTextColor(234,240,255);doc.setFontSize(10);doc.setFont('helvetica','normal');
-  doc.text(`${who}  ·  Generated ${today}`,M+70,63);
+  doc.text(`${who}  Â·  Generated ${today}`,M+70,63);
   let y=110;
   const kpis=lastKpis.filter(k=>!String(k[0]).startsWith('__'));
   const week=(lastKpis.find(k=>k[0]==='__week')||[])[1]||'';
@@ -1278,8 +1295,8 @@ $('downloadDash').onclick=()=>{
   kpis.forEach(([l,v],i)=>{
     const x=M+i*(bw+10);
     doc.setFillColor(238,242,255);doc.setDrawColor(...BLUE);doc.roundedRect(x,y,bw,52,6,6,'FD');
-    doc.setTextColor(...NAVY);doc.setFont('helvetica','bold');doc.setFontSize(12);doc.text(String(v).replace('≤','<='),x+8,y+22);
-    doc.setTextColor(85,85,85);doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.text(String(l).replace('≤','<='),x+8,y+36);
+    doc.setTextColor(...NAVY);doc.setFont('helvetica','bold');doc.setFontSize(12);doc.text(String(v).replace('â‰¤','<='),x+8,y+22);
+    doc.setTextColor(85,85,85);doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.text(String(l).replace('â‰¤','<='),x+8,y+36);
     doc.setTextColor(150,150,150);doc.text('week of '+week,x+8,y+46);
   });
   y+=76;
@@ -1297,14 +1314,14 @@ $('downloadDash').onclick=()=>{
     y+=h+40;
   }
   doc.setTextColor(150,150,150);doc.setFont('helvetica','normal');doc.setFontSize(7.5);
-  doc.text('All Rights Reserved © Philippou Law Firm',M,830);
+  doc.text('All Rights Reserved Â© Philippou Law Firm',M,830);
   doc.save(`PLF-Dashboard-${new Date().toISOString().slice(0,10)}.pdf`);
 };
 
 async function loadAdmins(){
   try{
     const list=await rpc(api('admins'),{});
-    if(!list.length){$('adminsTable').innerHTML='<p style="font-size:13px;color:#666">Nobody receives this report yet — assign people to the department under the gear icon.</p>';return;}
+    if(!list.length){$('adminsTable').innerHTML='<p style="font-size:13px;color:#666">Nobody receives this report yet â€” assign people to the department under the gear icon.</p>';return;}
     let h='<table><tr><th style="font-size:12px">Name</th><th style="font-size:12px">Email</th><th style="font-size:12px">Status</th><th></th></tr>';
     for(const a of list){h+=`<tr><td>${esc(a.name)}</td><td style="font-size:12.5px">${esc(a.email)}</td><td><span class="pill ${a.active?'ok':'no'}">${a.active?'Active':'Inactive'}</span></td>
       <td style="white-space:nowrap"><button class="btn" data-act="send" data-id="${a.id}" data-name="${att(a.name)}">Send form</button>
@@ -1331,13 +1348,13 @@ async function loadAdmins(){
 $('sendFormsBtn').onclick=async()=>{
   const label=isSales()?'Sales':isGeneral()?'firm-wide check-in':'Corporate';
   if(!confirm(`Send the ${label} form to everyone active on it now?`))return;
-  try{await rpc(api('trigger'),{p_kind:'forms'});$('globalMsg').textContent='Form emails are being sent — check Submissions in a minute.';setTimeout(()=>loadSubs(),4000);}
+  try{await rpc(api('trigger'),{p_kind:'forms'});$('globalMsg').textContent='Form emails are being sent â€” check Submissions in a minute.';setTimeout(()=>loadSubs(),4000);}
   catch(e){$('globalMsg').textContent='Trigger failed.';}
 };
 $('sendReportBtn').onclick=async()=>{
   const label=isSales()?'Sales':isGeneral()?'firm-wide check-in':'Corporate';
   if(!confirm(`Compile and email the ${label} summary (with PDF) to the recipients now?`))return;
-  try{await rpc(api('trigger'),{p_kind:'report'});$('globalMsg').textContent='Summary is being compiled and emailed. If nothing arrives, check Settings → Email &amp; Delivery.';}
+  try{await rpc(api('trigger'),{p_kind:'report'});$('globalMsg').textContent='Summary is being compiled and emailed. If nothing arrives, check Settings â†’ Email &amp; Delivery.';}
   catch(e){$('globalMsg').textContent='Trigger failed.';}
 };
 </script>
