@@ -1,0 +1,11 @@
+# Generated report exports. These contain client names and correspondence, and
+# this repository is deployed to a PUBLIC site — anything committed here becomes
+# downloadable by anyone who guesses the URL. Reports belong in the private
+# department-reports bucket, reachable only through the admin console.
+client-conversation-review-*.md
+client-conversation-review-*.pdf
+*-review-*.pdf
+report.html
+
+# Local scratch
+*.tmp
