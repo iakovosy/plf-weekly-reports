@@ -747,7 +747,7 @@ async function docApi(action,extra){
   if(!r.ok)throw new Error(j.error||('HTTP '+r.status));
   return j;
 }
-const fmtSize=n=>n==null?'—':(n<1024?n+' B':(n<1048576?Math.round(n/1024)+' KB':(n/1048576).toFixed(1)+' MB'));
+/* fmtSize is declared further down for the expired-report archive and reused here. */
 /* The function only accepts plain file names, so tidy anything unusual before sending. */
 const safeDocName=n=>String(n).replace(/[^A-Za-z0-9 ._()\-]+/g,'-').replace(/-{2,}/g,'-');
 function loadDocumentsPage(){
