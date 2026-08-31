@@ -42,6 +42,14 @@ const { BLUE, SOFT, GREY } = HEX;
 
 const NOMINEE = { pipeline: "0", disengaged: "1311365244", label: "Nominee services" };
 
+// Disengagement data is only trustworthy from this month onwards. Records were
+// migrated into HubSpot around October 2024 and the Disengaged stage was not
+// used consistently until May 2026 — April 2026 alone shows 26 services closed,
+// roughly five times a normal month, which was data cleanup rather than clients
+// leaving. The trend and year-to-date figures therefore start here, so a tidy-up
+// can never be read as a wave of churn.
+const DATA_START = "2026-05-01";
+
 const W = 595, H = 842, M = 44, BOTTOM = 56;
 
 // Client reference: six digits beginning 1 or 3, as it appears in ticket subjects.
@@ -104,6 +112,10 @@ function serviceName(subject: string): string {
 }
 
 const money = (n: number) => "€" + Math.round(n).toLocaleString("en-GB");
+
+const monthShort = (period: string) =>
+  new Date(period.slice(0, 7) + "-01T00:00:00Z")
+    .toLocaleDateString("en-GB", { month: "short", year: "numeric", timeZone: "UTC" });
 
 type Row = { id: string; subject: string; entered: string; reason: string };
 
@@ -305,6 +317,49 @@ Deno.serve(async (req) => {
     const rate = activeStart > 0 ? (clients.length / activeStart) * 100 : null;
     const leftUsRate = activeStart > 0 ? (leftUs.clients / activeStart) * 100 : null;
 
+    stage = "trend";
+    // Earlier months come from churn_monthly, not from HubSpot. Re-querying the
+    // CRM for history would let an annual figure drift away from the monthly
+    // reports already sent; reading back what was reported cannot.
+    type Hist = {
+      period: string; clients: number; services: number; fees: number;
+      rate: number | null; leftUsClients: number | null; leftUsFees: number | null;
+      current?: boolean;
+    };
+    const { data: prior } = await supabase.from("churn_monthly")
+      .select("period,total_clients,total_services,revenue_lost,churn_rate,detail")
+      .gte("period", DATA_START)
+      .lt("period", first)
+      .order("period", { ascending: true });
+    const history: Hist[] = (prior ?? []).map((h: any) => ({
+      period: String(h.period).slice(0, 10),
+      clients: Number(h.total_clients ?? 0),
+      services: Number(h.total_services ?? 0),
+      fees: Number(h.revenue_lost ?? 0),
+      rate: h.churn_rate == null ? null : Number(h.churn_rate),
+      leftUsClients: h.detail?.left_us?.clients ?? null,
+      leftUsFees: h.detail?.left_us?.fees ?? null,
+    }));
+    const series: Hist[] = [...history, {
+      period: first, clients: clients.length, services: rows.length, fees: revenueLost,
+      rate: rate == null ? null : Number(rate.toFixed(3)),
+      leftUsClients: leftUs.clients, leftUsFees: leftUs.fees, current: true,
+    }];
+    const prevMonth = history.length ? history[history.length - 1] : null;
+    const avgClients = history.length
+      ? history.reduce((s, h) => s + h.clients, 0) / history.length : null;
+    const avgFees = history.length
+      ? history.reduce((s, h) => s + h.fees, 0) / history.length : null;
+    const inYear = series.filter((h) => h.period.slice(0, 4) === String(year));
+    const ytd = {
+      months: inYear.length,
+      clients: inYear.reduce((s, h) => s + h.clients, 0),
+      services: inYear.reduce((s, h) => s + h.services, 0),
+      fees: inYear.reduce((s, h) => s + h.fees, 0),
+      leftUsClients: inYear.reduce((s, h) => s + (h.leftUsClients ?? 0), 0),
+      leftUsFees: inYear.reduce((s, h) => s + (h.leftUsFees ?? 0), 0),
+    };
+
     stage = "build pdf";
     const d = await createDoc();
     const { font, bold, clean } = d;
@@ -350,7 +405,7 @@ Deno.serve(async (req) => {
         const cl = vals.map((v, i) => wrap(v, cols[i].w, 8.5, i === 0 ? bold : font));
         const rowH = Math.max(...cl.map((l) => l.length)) * 11 + 7;
         if (y - rowH < BOTTOM) { newPage(); header(); }
-        const isTotal = vals[0] === "TOTAL";
+        const isTotal = vals[0] === "TOTAL" || vals[0].startsWith("YTD");
         if (isTotal) page.drawRectangle({ x: M, y: y - rowH + 12, width: TW, height: rowH, color: COLORS.totalRow });
         else if (ri % 2 === 1) page.drawRectangle({ x: M, y: y - rowH + 12, width: TW, height: rowH, color: COLORS.soft });
         let x = M;
@@ -395,6 +450,53 @@ Deno.serve(async (req) => {
       8.5, font, COLORS.note,
     );
     y -= 6;
+
+    heading("Trend");
+    if (!history.length) {
+      para(
+        `This is the first month of comparable data — records are only reliable from ${monthShort(DATA_START)} ` +
+        "onwards — so there is nothing yet to compare against. Each further month will build this section out.",
+        9.5, font, COLORS.black,
+      );
+    } else {
+      table(
+        [
+          { t: "Month", w: 95 }, { t: "Clients", w: 55 }, { t: "Services", w: 60 },
+          { t: "Fees lost", w: 85 }, { t: "Churn rate", w: 65 }, { t: "Client left us", w: 147 },
+        ],
+        series.map((h) => [
+          monthShort(h.period) + (h.current ? "  (this month)" : ""),
+          String(h.clients),
+          String(h.services),
+          h.fees ? money(h.fees) : "—",
+          h.rate == null ? "—" : h.rate.toFixed(2) + "%",
+          h.leftUsClients == null ? "—" : `${h.leftUsClients}, ${money(h.leftUsFees ?? 0)}`,
+        ]).concat([[
+          `YTD ${year}`,
+          String(ytd.clients), String(ytd.services), money(ytd.fees), "",
+          `${ytd.leftUsClients}, ${money(ytd.leftUsFees)}`,
+        ]]),
+        [1, 2, 3, 4],
+      );
+      const dClients = clients.length - prevMonth!.clients;
+      const dFees = revenueLost - prevMonth!.fees;
+      const move = (n: number, fmt: (v: number) => string) =>
+        n === 0 ? "level" : `${n > 0 ? "up" : "down"} by ${fmt(Math.abs(n))}`;
+      para(
+        `Against ${monthShort(prevMonth!.period)}: clients ${move(dClients, (v) => String(v))}, ` +
+        `fees ${move(dFees, money)}. The monthly average since ${monthShort(DATA_START)} is ` +
+        `${avgClients!.toFixed(1)} clients and ${money(avgFees!)}.`,
+        9, font, COLORS.black,
+      );
+      y -= 2;
+      para(
+        `Year to date, across ${ytd.months} month${ytd.months === 1 ? "" : "s"}, ${ytd.clients} clients have left ` +
+        `and ${money(ytd.fees)} of recurring annual fees has gone with them. That figure is annual: unless those ` +
+        "clients are replaced, the same amount is absent again next year.",
+        8.5, font, COLORS.note,
+      );
+      y -= 6;
+    }
 
     heading("Why they left");
     if (!byReason.length) {
@@ -459,6 +561,8 @@ Deno.serve(async (req) => {
       "The reason is the one selected by whoever moved the ticket to Disengaged. It records what we were told or believed at the time; it is not an independent review of why the client left.",
       "The Accounting pipeline is excluded for now while its tickets are being corrected. It can be added back once the data is reliable.",
       "The churn rate uses clients holding at least one live nominee service at the start of the month as its denominator.",
+      `Trend and year-to-date figures begin in ${monthShort(DATA_START)}, the first month whose records are reliable. Earlier months are excluded deliberately: April 2026 shows 26 services closed, several times a normal month, which was data cleanup rather than clients leaving.`,
+      "Earlier months in the trend are read back from the figures already reported, not recalculated from HubSpot, so this report can never contradict one you have already sent.",
     ];
     if (noReasonCount > 0) {
       notes.push(`${noReasonCount} ticket(s) were closed without a reason and appear as "${NOT_STATED}".`);
@@ -564,6 +668,10 @@ Deno.serve(async (req) => {
     const reasonRows = byReason.map((b) =>
       `<tr><td style="${td}">${esc(b.label)}</td><td style="${td};text-align:right">${b.clients}</td><td style="${td};text-align:right">${b.fees ? money(b.fees) : "—"}</td></tr>`
     ).join("");
+    const trendRows = series.map((h) =>
+      `<tr${h.current ? ` style="background:${SOFT};font-weight:bold"` : ""}><td style="${td}">${monthShort(h.period)}${h.current ? " (this month)" : ""}</td><td style="${td};text-align:right">${h.clients}</td><td style="${td};text-align:right">${h.fees ? money(h.fees) : "—"}</td><td style="${td};text-align:right">${h.leftUsClients == null ? "—" : h.leftUsClients}</td></tr>`
+    ).join("") +
+      `<tr><td style="${td}"><b>YTD ${year}</b></td><td style="${td};text-align:right"><b>${ytd.clients}</b></td><td style="${td};text-align:right"><b>${money(ytd.fees)}</b></td><td style="${td};text-align:right"><b>${ytd.leftUsClients}</b></td></tr>`;
     const topRows = clients.slice(0, 5).map((c) =>
       `<tr><td style="${td}">${c.ref || "—"} ${esc(c.label)}</td><td style="${td}">${esc([...c.reasons].map((r) => reasonInfo(r).short).join(" / "))}</td><td style="${td};text-align:right">${c.amount ? money(c.amount) : "—"}</td></tr>`
     ).join("");
@@ -580,6 +688,7 @@ Deno.serve(async (req) => {
       <tr><td style="${td}">Clients active at start of month</td><td style="${td}">${activeStart}</td></tr>
       <tr style="background:${SOFT}"><td style="${td}"><b>Of which: client left us</b><br><span style="font-size:11px;color:#666">price, competition or service quality</span></td><td style="${td}"><b>${leftUs.clients}</b>, ${money(leftUs.fees)}</td></tr>
     </table>
+    ${history.length ? `<p style="margin:14px 0 6px"><b>Trend</b></p><table style="border-collapse:collapse;margin:0 0 6px"><tr><th style="${th}">Month</th><th style="${th}">Clients</th><th style="${th}">Fees lost</th><th style="${th}">Left us</th></tr>${trendRows}</table><p style="margin:0 0 14px;font-size:12px;color:#666">Year to date across ${ytd.months} month${ytd.months === 1 ? "" : "s"}: ${ytd.clients} clients and ${money(ytd.fees)} of recurring annual fees. Trend begins ${monthShort(DATA_START)}, the first month with reliable records.</p>` : ""}
     ${byReason.length ? `<p style="margin:14px 0 6px"><b>Why they left</b></p><table style="border-collapse:collapse;margin:0 0 14px"><tr><th style="${th}">Reason</th><th style="${th}">Clients</th><th style="${th}">Fees</th></tr>${reasonRows}</table>` : ""}
     ${clients.length ? `<p style="margin:14px 0 6px"><b>Largest losses</b></p><table style="border-collapse:collapse;margin:0 0 14px">${topRows}</table>` : ""}
     <p style="margin:0 0 6px">The attached PDF lists every client lost, the services closed, the reason and the annual fee.</p>
@@ -604,6 +713,12 @@ Deno.serve(async (req) => {
         revenueLost, deals: allDealIds.length,
         activeStart, rate,
         leftUs,
+        trend: series.map((h) => ({
+          month: h.period, clients: h.clients, services: h.services, fees: h.fees,
+          leftUs: h.leftUsClients, current: !!h.current,
+        })),
+        ytd, avgClients, avgFees,
+        prevMonth: prevMonth?.period ?? null,
         reasons: byReason.map((b) => ({
           reason: b.label, group: b.group, clients: b.clients, services: b.services, fees: b.fees,
         })),
