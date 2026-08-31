@@ -10,6 +10,12 @@
 // DISTINCT deals. Summing per ticket would multiply the fee by the number of
 // services and inflate the figure severalfold.
 //
+// Reasons come from closed_lost_reason, which HubSpot asks for when a ticket is
+// moved to Disengaged. They are grouped so the report separates the churn we
+// might have prevented from the churn nobody could: a company struck off the
+// register was never retainable, and an engagement we resigned ourselves is a
+// decision rather than a loss. Only "Client left us" is a retention problem.
+//
 // The Accounting pipeline is deliberately out of scope: those tickets are being
 // corrected by hand and are not yet trustworthy. Add it back by restoring an
 // ACCOUNTING entry to PIPELINES once the data is clean.
@@ -38,8 +44,46 @@ const NOMINEE = { pipeline: "0", disengaged: "1311365244", label: "Nominee servi
 
 const W = 595, H = 842, M = 44, BOTTOM = 56;
 
-// Client reference as used by the firm: six digits beginning 1 or 3.
+// Client reference: six digits beginning 1 or 3, as it appears in ticket subjects.
 const REF = /\b([13]\d{5})\b/;
+
+// The reasons configured on the Disengaged stage, each mapped to a group.
+// `short` is what fits a table column; the full HubSpot label is kept for the
+// breakdown so it reads exactly as the admin selected it.
+type GroupKey = "lost" | "ended" | "closed" | "ours" | "unclear";
+
+const REASONS: Record<string, { short: string; group: GroupKey }> = {
+  "Cheaper Competitor": { short: "Cheaper competitor", group: "lost" },
+  "Disagrees with pricing": { short: "Disagrees with pricing", group: "lost" },
+  "Budget Constraints": { short: "Budget constraints", group: "lost" },
+  "Negative Experience (communication delays)": { short: "Negative experience", group: "lost" },
+  "Unclear timelines and expectations": { short: "Unclear timelines", group: "lost" },
+  "No longer needs the specific service.": { short: "No longer needed", group: "ended" },
+  "Service Downgrade": { short: "Service downgrade", group: "ended" },
+  "Company Strike Off": { short: "Company strike off", group: "closed" },
+  "Resignation by us": { short: "Resignation by us", group: "ours" },
+  "Personal Reasons (Unclear)": { short: "Personal (unclear)", group: "unclear" },
+};
+
+const GROUPS: { key: GroupKey; label: string; note: string }[] = [
+  { key: "lost", label: "Client left us", note: "price, competition or service quality" },
+  { key: "ended", label: "Service no longer needed", note: "the engagement reached its natural end" },
+  { key: "closed", label: "Company closed", note: "struck off — the client ceased to exist" },
+  { key: "ours", label: "Our decision", note: "we resigned the engagement" },
+  { key: "unclear", label: "Not stated or unclear", note: "" },
+];
+
+const NOT_STATED = "(not stated)";
+const MIXED = "Mixed reasons";
+
+function reasonInfo(raw: string): { short: string; group: GroupKey } {
+  if (!raw) return { short: NOT_STATED, group: "unclear" };
+  const hit = REASONS[raw];
+  if (hit) return { short: hit.short, group: hit.group };
+  // A reason added in HubSpot since this was written. Show it as it stands and
+  // flag it in the notes rather than filing it silently under "unclear".
+  return { short: raw, group: "unclear" };
+}
 
 function clientKey(subject: string): { key: string; ref: string | null } {
   const s = String(subject || "");
@@ -61,7 +105,7 @@ function serviceName(subject: string): string {
 
 const money = (n: number) => "€" + Math.round(n).toLocaleString("en-GB");
 
-type Row = { id: string; subject: string; entered: string };
+type Row = { id: string; subject: string; entered: string; reason: string };
 
 async function fetchDisengaged(token: string, startMs: number, endMs: number): Promise<Row[]> {
   const prop = `hs_v2_date_entered_${NOMINEE.disengaged}`;
@@ -74,16 +118,18 @@ async function fetchDisengaged(token: string, startMs: number, endMs: number): P
       ],
     }],
     sorts: [{ propertyName: prop, direction: "ASCENDING" }],
-    properties: ["subject", prop],
+    properties: ["subject", "closed_lost_reason", prop],
     limit: 100,
   });
   return res.map((t: any) => ({
     id: String(t.id),
     subject: String(t.properties?.subject || t.id),
     entered: String(t.properties?.[prop] || ""),
+    reason: String(t.properties?.closed_lost_reason || ""),
   }));
 }
 
+// Distinct clients holding at least one live nominee service right now.
 async function activeClients(token: string): Promise<number> {
   const res = await hsSearch(token, "tickets", {
     filterGroups: [{
@@ -101,12 +147,10 @@ async function activeClients(token: string): Promise<number> {
 }
 
 type Client = {
-  key: string;
-  ref: string | null;
-  label: string;
-  services: { name: string; entered: string; ticketId: string }[];
-  dealIds: Set<string>;
-  amount: number;
+  key: string; ref: string | null; label: string;
+  services: { name: string; entered: string; ticketId: string; reason: string }[];
+  reasons: Set<string>;
+  dealIds: Set<string>; amount: number;
 };
 
 Deno.serve(async (req) => {
@@ -125,7 +169,6 @@ Deno.serve(async (req) => {
     const now = cyprusNow();
     runDate = now.date;
 
-    // ---- Which month? Scheduled runs report the month just ended. ----
     let year: number, month: number;
     if (typeof body.month === "string" && /^\d{4}-\d{2}$/.test(body.month)) {
       year = parseInt(body.month.slice(0, 4), 10);
@@ -172,17 +215,18 @@ Deno.serve(async (req) => {
     for (const r of rows) {
       const { key, ref } = clientKey(r.subject);
       if (!clientMap.has(key)) {
-        clientMap.set(key, { key, ref, label: "", services: [], dealIds: new Set(), amount: 0 });
+        clientMap.set(key, {
+          key, ref, label: "", services: [], reasons: new Set(), dealIds: new Set(), amount: 0,
+        });
       }
       const c = clientMap.get(key)!;
-      c.services.push({ name: serviceName(r.subject), entered: r.entered, ticketId: r.id });
+      c.services.push({ name: serviceName(r.subject), entered: r.entered, ticketId: r.id, reason: r.reason });
+      c.reasons.add(r.reason || "");
       c.label = clientLabel([c.label, r.subject].filter(Boolean));
     }
 
     stage = "associated deals";
-    // Each ticket links to the deal carrying the fee. Multiple tickets share one
-    // deal, so deduplicate before summing anything.
-    const assoc = await hsAssociations(token, "tickets", "deals", rows.map((r) => r.id));
+    const assoc = rows.length ? await hsAssociations(token, "tickets", "deals", rows.map((r) => r.id)) : new Map();
     for (const c of clientMap.values()) {
       for (const s of c.services) {
         for (const dealId of (assoc.get(s.ticketId) || [])) c.dealIds.add(dealId);
@@ -197,28 +241,69 @@ Deno.serve(async (req) => {
     const amountById = new Map<string, number>();
     const currencies = new Set<string>();
     let dealsWithoutAmount = 0;
-    for (const d of deals) {
-      const raw = d?.properties?.amount;
-      const v = raw == null || raw === "" ? NaN : parseFloat(String(raw));
+    for (const dl of deals) {
+      const rawAmt = dl?.properties?.amount;
+      const v = rawAmt == null || rawAmt === "" ? NaN : parseFloat(String(rawAmt));
       if (isNaN(v)) dealsWithoutAmount++;
-      else amountById.set(String(d.id), v);
-      const ccy = d?.properties?.deal_currency_code;
+      else amountById.set(String(dl.id), v);
+      const ccy = dl?.properties?.deal_currency_code;
       if (ccy) currencies.add(String(ccy));
     }
     for (const c of clientMap.values()) {
       c.amount = [...c.dealIds].reduce((s, id) => s + (amountById.get(id) ?? 0), 0);
     }
-    const revenueLost = [...new Set(allDealIds)]
-      .reduce((s, id) => s + (amountById.get(id) ?? 0), 0);
+    const revenueLost = allDealIds.reduce((s, id) => s + (amountById.get(id) ?? 0), 0);
 
     const clients = [...clientMap.values()].sort((a, b) => b.amount - a.amount);
     const noRefCount = rows.filter((r) => !clientKey(r.subject).ref).length;
     const ticketsWithoutDeal = rows.filter((r) => (assoc.get(r.id) || []).length === 0).length;
+    const noReasonCount = rows.filter((r) => !r.reason).length;
+
+    stage = "reasons";
+    // Services are attributed per ticket, which is exact. Clients and fees are
+    // attributed to the client's reason; a client whose services were closed for
+    // different reasons cannot be split without inventing a rule, so it goes on a
+    // "Mixed reasons" line and is named in the notes.
+    type Bucket = { label: string; group: GroupKey; clients: number; services: number; fees: number };
+    const buckets = new Map<string, Bucket>();
+    const bucket = (label: string) => {
+      if (!buckets.has(label)) {
+        buckets.set(label, {
+          label: label === MIXED ? MIXED : (label || NOT_STATED),
+          group: label === MIXED ? "unclear" : reasonInfo(label).group,
+          clients: 0, services: 0, fees: 0,
+        });
+      }
+      return buckets.get(label)!;
+    };
+    for (const r of rows) bucket(r.reason || "").services++;
+    const mixedClients: string[] = [];
+    for (const c of clients) {
+      const distinct = [...c.reasons];
+      const mixed = distinct.length !== 1;
+      if (mixed) mixedClients.push(`${c.ref || "?"} ${c.label}`);
+      const b = bucket(mixed ? MIXED : (distinct[0] || ""));
+      b.clients++;
+      b.fees += c.amount;
+    }
+    const unknownReasons = [...new Set(rows.map((r) => r.reason).filter((r) => r && !REASONS[r]))];
+    const byReason = [...buckets.values()].sort((a, b) => b.fees - a.fees || b.clients - a.clients);
+
+    const groupTotals = new Map<GroupKey, { clients: number; services: number; fees: number }>();
+    for (const b of byReason) {
+      const g = groupTotals.get(b.group) ?? { clients: 0, services: 0, fees: 0 };
+      g.clients += b.clients;
+      g.services += b.services;
+      g.fees += b.fees;
+      groupTotals.set(b.group, g);
+    }
+    const leftUs = groupTotals.get("lost") ?? { clients: 0, services: 0, fees: 0 };
 
     stage = "active clients";
     const activeNow = await activeClients(token);
     const activeStart = activeNow + clients.length;
     const rate = activeStart > 0 ? (clients.length / activeStart) * 100 : null;
+    const leftUsRate = activeStart > 0 ? (leftUs.clients / activeStart) * 100 : null;
 
     stage = "build pdf";
     const d = await createDoc();
@@ -271,8 +356,8 @@ Deno.serve(async (req) => {
         let x = M;
         vals.forEach((_, i) => {
           cl[i].forEach((line, li) => {
-            const w = font.widthOfTextAtSize(line, 8.5);
-            const xx = rightCols.includes(i) ? x + cols[i].w - 6 - w : x + 4;
+            const wdt = font.widthOfTextAtSize(line, 8.5);
+            const xx = rightCols.includes(i) ? x + cols[i].w - 6 - wdt : x + 4;
             page.drawText(line, {
               x: xx, y: y - li * 11, size: 8.5,
               font: (i === 0 || isTotal) ? bold : font, color: COLORS.black,
@@ -280,7 +365,10 @@ Deno.serve(async (req) => {
           });
           x += cols[i].w;
         });
-        page.drawLine({ start: { x: M, y: y - rowH + 10 }, end: { x: M + TW, y: y - rowH + 10 }, thickness: 0.5, color: COLORS.grey });
+        page.drawLine({
+          start: { x: M, y: y - rowH + 10 }, end: { x: M + TW, y: y - rowH + 10 },
+          thickness: 0.5, color: COLORS.grey,
+        });
         y -= rowH;
         ri++;
       }
@@ -294,27 +382,73 @@ Deno.serve(async (req) => {
       ["Services closed", String(rows.length)],
       ["Churn rate (clients)", rate == null ? "—" : rate.toFixed(2) + "%"],
       ["Clients active at start of month", String(activeStart)],
+      [
+        "Of which: client left us",
+        `${leftUs.clients} client${leftUs.clients === 1 ? "" : "s"}, ${money(leftUs.fees)}` +
+        (leftUsRate == null ? "" : ` (${leftUsRate.toFixed(2)}%)`),
+      ],
     ]);
     para(
-      "Clients and fees are the figures to quote. One client leaving usually closes several services billed under a single deal, so the service count is always higher and must not be multiplied by the fee.",
+      "\"Client left us\" is the figure to act on: clients lost over price, competition or service quality. " +
+      "A company struck off the register was never retainable, and an engagement we resigned ourselves is a " +
+      "decision rather than a loss.",
       8.5, font, COLORS.note,
     );
     y -= 6;
+
+    heading("Why they left");
+    if (!byReason.length) {
+      para("No clients disengaged during the month.", 10, font, COLORS.black);
+    } else {
+      table(
+        [
+          { t: "Reason", w: 217 }, { t: "Category", w: 130 },
+          { t: "Clients", w: 50 }, { t: "Services", w: 50 }, { t: "Fees lost", w: 60 },
+        ],
+        byReason.map((b) => [
+          b.label,
+          GROUPS.find((g) => g.key === b.group)?.label ?? "",
+          String(b.clients),
+          String(b.services),
+          b.fees ? money(b.fees) : "—",
+        ]).concat([["TOTAL", "", String(clients.length), String(rows.length), money(revenueLost)]]),
+        [2, 3, 4],
+      );
+      const groupRows = GROUPS
+        .map((g) => ({ g, t: groupTotals.get(g.key) }))
+        .filter((x) => x.t && (x.t.clients || x.t.services));
+      if (groupRows.length > 1) {
+        table(
+          [
+            { t: "Category", w: 150 }, { t: "", w: 197 },
+            { t: "Clients", w: 50 }, { t: "Services", w: 50 }, { t: "Fees lost", w: 60 },
+          ],
+          groupRows.map(({ g, t }) => [
+            g.label, g.note, String(t!.clients), String(t!.services), t!.fees ? money(t!.fees) : "—",
+          ]),
+          [2, 3, 4],
+        );
+      }
+    }
 
     heading("Clients lost this month");
     if (!clients.length) {
       para("No clients disengaged during the month.", 10, font, COLORS.black);
     } else {
       table(
-        [{ t: "Ref", w: 46 }, { t: "Client", w: 190 }, { t: "Services closed", w: 145 }, { t: "Date", w: 52 }, { t: "Annual fee", w: 74 }],
+        [
+          { t: "Ref", w: 40 }, { t: "Client", w: 132 }, { t: "Services closed", w: 110 },
+          { t: "Reason", w: 118 }, { t: "Date", w: 47 }, { t: "Annual fee", w: 60 },
+        ],
         clients.map((c) => [
           c.ref || "—",
           c.label,
           c.services.map((s) => s.name).join(", "),
+          [...c.reasons].map((r) => reasonInfo(r).short).join(" / "),
           c.services[0]?.entered ? String(c.services[0].entered).slice(0, 10).split("-").reverse().join("/") : "—",
           c.amount ? money(c.amount) : "—",
-        ]).concat([["TOTAL", "", String(rows.length) + " services", "", money(revenueLost)]]),
-        [4],
+        ]).concat([["TOTAL", "", String(rows.length) + " services", "", "", money(revenueLost)]]),
+        [5],
       );
     }
 
@@ -322,9 +456,25 @@ Deno.serve(async (req) => {
     const notes = [
       `Churn is a nominee service entering the Disengaged stage during ${monthLabel}.`,
       "Fees come from the deal each ticket is associated with. Where several services share one deal, that deal is counted once — so the fee total reflects what the client actually paid, not the number of tickets closed.",
+      "The reason is the one selected by whoever moved the ticket to Disengaged. It records what we were told or believed at the time; it is not an independent review of why the client left.",
       "The Accounting pipeline is excluded for now while its tickets are being corrected. It can be added back once the data is reliable.",
       "The churn rate uses clients holding at least one live nominee service at the start of the month as its denominator.",
     ];
+    if (noReasonCount > 0) {
+      notes.push(`${noReasonCount} ticket(s) were closed without a reason and appear as "${NOT_STATED}".`);
+    }
+    if (mixedClients.length) {
+      notes.push(
+        `Services were closed for different reasons at: ${mixedClients.join("; ")}. ` +
+        `Their fees sit on the "${MIXED}" line rather than being split between reasons.`,
+      );
+    }
+    if (unknownReasons.length) {
+      notes.push(
+        `Reason(s) this report does not recognise, left uncategorised: ${unknownReasons.join(", ")}. ` +
+        "They were added in HubSpot after the report was written and should be given a category.",
+      );
+    }
     if (ticketsWithoutDeal > 0) {
       notes.push(`${ticketsWithoutDeal} ticket(s) had no associated deal, so no fee could be attributed to them. The fee total is therefore a floor, not an exact figure.`);
     }
@@ -369,14 +519,23 @@ Deno.serve(async (req) => {
         detail: {
           scope: "nominee",
           clients: clients.map((c) => ({
-            ref: c.ref,
-            label: c.label,
-            amount: c.amount,
-            deals: [...c.dealIds],
-            services: c.services,
+            ref: c.ref, label: c.label, amount: c.amount,
+            reasons: [...c.reasons], deals: [...c.dealIds], services: c.services,
           })),
+          reasons: byReason.map((b) => ({
+            reason: b.label, group: b.group, clients: b.clients, services: b.services, fees: b.fees,
+          })),
+          groups: GROUPS.map((g) => ({
+            group: g.key,
+            label: g.label,
+            ...(groupTotals.get(g.key) ?? { clients: 0, services: 0, fees: 0 }),
+          })),
+          left_us: leftUs,
           tickets_without_deal: ticketsWithoutDeal,
           deals_without_amount: dealsWithoutAmount,
+          tickets_without_reason: noReasonCount,
+          unknown_reasons: unknownReasons,
+          mixed_reason_clients: mixedClients,
           currencies: [...currencies],
         },
         computed_at: new Date().toISOString(),
@@ -399,10 +558,14 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ skipped: true, reason: "no recipient" }), { status: 200 });
     }
 
+    const esc = (s: string) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;");
     const th = `padding:7px 10px;background:${BLUE};color:#ffffff;text-align:left;font-size:12px`;
     const td = `padding:6px 10px;border:1px solid ${GREY};font-size:13px`;
+    const reasonRows = byReason.map((b) =>
+      `<tr><td style="${td}">${esc(b.label)}</td><td style="${td};text-align:right">${b.clients}</td><td style="${td};text-align:right">${b.fees ? money(b.fees) : "—"}</td></tr>`
+    ).join("");
     const topRows = clients.slice(0, 5).map((c) =>
-      `<tr><td style="${td}">${c.ref || "—"} ${c.label.replace(/&/g, "&amp;").replace(/</g, "&lt;")}</td><td style="${td};text-align:right">${c.amount ? money(c.amount) : "—"}</td></tr>`
+      `<tr><td style="${td}">${c.ref || "—"} ${esc(c.label)}</td><td style="${td}">${esc([...c.reasons].map((r) => reasonInfo(r).short).join(" / "))}</td><td style="${td};text-align:right">${c.amount ? money(c.amount) : "—"}</td></tr>`
     ).join("");
     const html = `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#ffffff">
   <div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.65;color:#101418;padding:22px 24px">
@@ -415,10 +578,12 @@ Deno.serve(async (req) => {
       <tr><td style="${td}">Services closed</td><td style="${td}">${rows.length}</td></tr>
       <tr><td style="${td}">Churn rate (clients)</td><td style="${td}">${rate == null ? "—" : rate.toFixed(2) + "%"}</td></tr>
       <tr><td style="${td}">Clients active at start of month</td><td style="${td}">${activeStart}</td></tr>
+      <tr style="background:${SOFT}"><td style="${td}"><b>Of which: client left us</b><br><span style="font-size:11px;color:#666">price, competition or service quality</span></td><td style="${td}"><b>${leftUs.clients}</b>, ${money(leftUs.fees)}</td></tr>
     </table>
+    ${byReason.length ? `<p style="margin:14px 0 6px"><b>Why they left</b></p><table style="border-collapse:collapse;margin:0 0 14px"><tr><th style="${th}">Reason</th><th style="${th}">Clients</th><th style="${th}">Fees</th></tr>${reasonRows}</table>` : ""}
     ${clients.length ? `<p style="margin:14px 0 6px"><b>Largest losses</b></p><table style="border-collapse:collapse;margin:0 0 14px">${topRows}</table>` : ""}
-    <p style="margin:0 0 6px">The attached PDF lists every client lost, the services closed and the annual fee.</p>
-    <p style="margin:0 0 24px;font-size:12px;color:#666">Fees come from the deal each ticket is associated with; where several services share one deal it is counted once, so the total reflects what the client actually paid. Accounting is excluded while those tickets are being corrected.</p>
+    <p style="margin:0 0 6px">The attached PDF lists every client lost, the services closed, the reason and the annual fee.</p>
+    <p style="margin:0 0 24px;font-size:12px;color:#666">Fees come from the deal each ticket is associated with; where several services share one deal it is counted once, so the total reflects what the client actually paid. Reasons are those selected when the ticket was moved to Disengaged. Accounting is excluded while those tickets are being corrected.</p>
     ${settings.email_signature || ""}
   </div>
 </body></html>`;
@@ -438,7 +603,12 @@ Deno.serve(async (req) => {
         clients: clients.length, services: rows.length,
         revenueLost, deals: allDealIds.length,
         activeStart, rate,
-        ticketsWithoutDeal, dealsWithoutAmount, noRefCount,
+        leftUs,
+        reasons: byReason.map((b) => ({
+          reason: b.label, group: b.group, clients: b.clients, services: b.services, fees: b.fees,
+        })),
+        ticketsWithoutDeal, dealsWithoutAmount, noRefCount, noReasonCount,
+        unknownReasons, mixedClients,
         currencies: [...currencies],
         to: recipients, detail: r.detail,
       }),
