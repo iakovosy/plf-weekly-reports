@@ -329,6 +329,15 @@ function renderNav(){
       ds.className='sub'+(dk===curReport?' sel':'');ds.textContent='Documents';
       ds.onclick=()=>{curReport=(curReport===dk?null:dk);renderNav();renderMain();};
       nav.appendChild(ds);
+      /* Staff surveys. Sales only for now — add the department here when
+         another team needs one; nothing else is department-specific. */
+      if(SURVEY_DEPTS.includes(d)){
+        const sk=SURVEYKEY+d;
+        const ss=document.createElement('button');ss.type='button';
+        ss.className='sub'+(sk===curReport?' sel':'');ss.textContent='Surveys';
+        ss.onclick=()=>{curReport=(curReport===sk?null:sk);renderNav();renderMain();};
+        nav.appendChild(ss);
+      }
     }
   });
 }
@@ -356,6 +365,14 @@ function renderMain(){
     $('deptView').classList.remove('hidden');
     $('crumb').innerHTML=`${esc(dept)} / <b>Documents</b>`;
     loadDocumentsPage(dept);
+    return;
+  }
+  if(curReport&&curReport.indexOf(SURVEYKEY)===0){
+    const dept=curReport.slice(SURVEYKEY.length);
+    $('reportView').classList.add('hidden');
+    $('deptView').classList.remove('hidden');
+    $('crumb').innerHTML=`${esc(dept)} / <b>Surveys</b>`;
+    loadSurveysPage(dept);
     return;
   }
   const rep=curReport?ALLREPORTS[curReport]:null;
@@ -815,6 +832,197 @@ function doDocUpload(){
   };
   fr.onerror=()=>{msg.textContent='Could not read that file.';};
   fr.readAsDataURL(f);
+}
+
+/* ---------- Staff surveys ----------
+   curReport is SURVEYKEY + <department> when the Surveys entry is chosen.
+   A survey has three states and they are the whole safety model:
+     draft  — visible to anyone with a link, but the database refuses answers
+     open   — accepting answers; only now will invitations send
+     closed — no longer accepting answers
+   Results are withheld until min_responses is reached, because a "combined
+   total" over two people is not anonymous. */
+const SURVEYKEY='survey::';
+const SURVEY_DEPTS=['Sales'];
+let curSurvey=null;
+
+function svStatusChip(s){
+  const c={draft:'#8a6d00',open:'#1E7B32',closed:'#777'}[s]||'#777';
+  const bg={draft:'#FFF6DC',open:'#E7F6EA',closed:'#F0F0F0'}[s]||'#F0F0F0';
+  return `<span style="background:${bg};color:${c};border-radius:20px;padding:2px 10px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px">${esc(s)}</span>`;
+}
+
+async function loadSurveysPage(dept){
+  $('deptView').innerHTML=`<div class="panel">
+    <div class="sechead">${esc(dept)} — staff surveys</div>
+    <p class="note2">Anonymous feedback surveys. Answers are never stored against a name or an email address, so the console can show how many people replied but never who said what.</p>
+    <div id="svList"><p style="font-size:13px;color:#666">Loading…</p></div>
+    <div id="svDetail"></div>
+  </div>`;
+  await svLoadList();
+}
+
+async function svLoadList(){
+  const T=$('svList');
+  try{
+    const rows=await rpc('admin_survey_list',{});
+    if(!rows||!rows.length){T.innerHTML='<p style="font-size:13px;color:#666">No surveys yet.</p>';return;}
+    let h='<table><tr><th style="font-size:12px">Survey</th><th style="font-size:12px">Status</th><th style="font-size:12px">Recipients</th><th style="font-size:12px">Sent</th><th style="font-size:12px">Responded</th><th></th></tr>';
+    for(const s of rows){
+      h+=`<tr><td><b>${esc(s.title)}</b><div style="font-size:11.5px;color:#777">about ${esc(s.leader_name||'—')}</div></td>
+        <td>${svStatusChip(s.status)}</td>
+        <td>${s.recipients}</td><td>${s.sent}</td>
+        <td><b>${s.responded}</b> of ${s.recipients}</td>
+        <td style="white-space:nowrap"><button class="btn" data-sv="${att(s.id)}">Manage</button></td></tr>`;
+    }
+    h+='</table>';T.innerHTML=h;
+    T.querySelectorAll('[data-sv]').forEach(b=>b.onclick=()=>svOpenSurvey(b.dataset.sv));
+  }catch(e){T.innerHTML='<p class="msg bad">Could not load surveys.</p>';}
+}
+
+async function svOpenSurvey(id){
+  const D=$('svDetail');
+  D.innerHTML='<p style="font-size:13px;color:#666;margin-top:18px">Loading…</p>';
+  try{ curSurvey=await rpc('admin_survey_get',{p_id:id}); }
+  catch(e){ D.innerHTML='<p class="msg bad">Could not load that survey.</p>'; return; }
+  svRenderDetail();
+}
+
+function svRenderDetail(){
+  const s=curSurvey, D=$('svDetail');
+  const recips=(s.recipients||[]).filter(r=>r.email!=='preview@philippoulaw.com');
+  const preview=(s.recipients||[]).find(r=>r.email==='preview@philippoulaw.com');
+  const responded=recips.filter(r=>r.responded).length;
+  const sent=recips.filter(r=>r.sent_at).length;
+  const portal=(cfgSettings.portal_url||'').replace(/\/$/,'');
+
+  D.innerHTML=`<div style="border-top:1px solid var(--grey);margin-top:26px;padding-top:22px">
+    <div class="sechead">${esc(s.title)} ${svStatusChip(s.status)}</div>
+
+    <div class="field"><label>Who the survey is about</label>
+      <input id="svLeader" style="max-width:320px" value="${att(s.leader_name||'')}" placeholder="e.g. Maria Georgiou">
+      <div class="note">This name replaces the placeholder in all 25 questions that mention the team leader. Change it here rather than editing the questions.</div></div>
+
+    <div class="field"><label>Hide results until this many people have answered</label>
+      <input id="svMin" type="number" min="1" max="50" style="max-width:110px" value="${att(String(s.min_responses))}">
+      <div class="note">Totals from two or three people are not anonymous — anyone can work out who said what. Below this number the results stay hidden, including from you.</div></div>
+
+    <div class="field"><label>Recipients — one per line, as <i>Name, email</i></label>
+      <textarea id="svRecips" style="width:100%;max-width:560px;min-height:130px;font-family:inherit;font-size:13px;border:1.5px solid var(--grey);border-radius:8px;padding:10px 12px">${esc(recips.map(r=>`${r.name||''}, ${r.email}`).join('\n'))}</textarea>
+      <div class="note">Sales reps and sales lawyers. Someone who has already answered is never removed by an edit here.</div></div>
+
+    <div class="row">
+      <button class="btn" id="svSave">Save</button>
+      <select id="svStatus" style="border:1.5px solid var(--grey);border-radius:8px;padding:8px 10px;font:inherit;font-size:13px">
+        <option value="draft"${s.status==='draft'?' selected':''}>Draft — nobody can answer</option>
+        <option value="open"${s.status==='open'?' selected':''}>Open — accepting answers</option>
+        <option value="closed"${s.status==='closed'?' selected':''}>Closed — no more answers</option>
+      </select>
+      ${preview&&portal?`<a class="btn" style="text-decoration:none;display:inline-block" target="_blank" href="${att(portal+'/survey.html?token='+preview.token)}">Preview the survey</a>`:''}
+    </div>
+    <div class="msg" id="svMsg"></div>
+
+    <div class="sechead" style="margin-top:26px">Send</div>
+    <p class="note2">Nothing is sent on a schedule — invitations go out only when you press one of these. The survey must be Open first, otherwise the link would refuse people's answers.</p>
+    <div class="row">
+      <button class="btn" id="svSendNew">Invite everyone not yet invited</button>
+      <button class="btn" id="svRemind">Remind those who have not answered</button>
+      <button class="btn" id="svTest">Send a test to me</button>
+    </div>
+    <div class="msg" id="svSendMsg"></div>
+
+    <div class="sechead" style="margin-top:26px">Progress</div>
+    <p class="note2"><b>${responded}</b> of ${recips.length} have answered · ${sent} invited · ${s.responses} response${s.responses===1?'':'s'} recorded.</p>
+    <div class="tablewrap">${recips.length?`<table><tr><th style="font-size:12px">Name</th><th style="font-size:12px">Email</th><th style="font-size:12px">Invited</th><th style="font-size:12px">Answered</th><th></th></tr>
+      ${recips.map(r=>`<tr><td>${esc(r.name||'—')}</td><td style="font-size:12.5px">${esc(r.email)}</td>
+        <td>${r.sent_at?new Date(r.sent_at).toLocaleDateString('en-GB'):'—'}</td>
+        <td>${r.responded?'<b style="color:#1E7B32">Yes</b>':'<span style="color:#999">Not yet</span>'}</td>
+        <td style="white-space:nowrap"><button class="btn" data-one="${att(r.email)}">Send to just this person</button></td></tr>`).join('')}
+      </table>`:'<p style="font-size:13px;color:#666">No recipients yet.</p>'}</div>
+
+    <div class="sechead" style="margin-top:26px">Results</div>
+    <div id="svRes"><p style="font-size:13px;color:#666">Loading…</p></div>
+  </div>`;
+
+  $('svSave').onclick=svSaveMeta;
+  $('svSendNew').onclick=()=>svSend({});
+  $('svRemind').onclick=()=>svSend({resend:true});
+  $('svTest').onclick=async()=>{
+    const to=prompt('Send a test invitation to which address?', cfgSettings.report_recipient||'');
+    if(to)svSend({action:'test',email:to.trim()});
+  };
+  D.querySelectorAll('[data-one]').forEach(b=>b.onclick=()=>svSend({email:b.dataset.one}));
+  svResults();
+}
+
+async function svSaveMeta(){
+  const M=$('svMsg');M.classList.remove('bad');M.textContent='Saving…';
+  try{
+    await rpc('admin_survey_save',{p_id:curSurvey.id,p:{
+      leader_name:$('svLeader').value.trim(),
+      min_responses:parseInt($('svMin').value,10)||4,
+      status:$('svStatus').value
+    }});
+    const list=$('svRecips').value.split(/\r?\n/).map(l=>{
+      const t=l.trim(); if(!t)return null;
+      const i=t.lastIndexOf(',');
+      return i<0?{name:'',email:t}:{name:t.slice(0,i).trim(),email:t.slice(i+1).trim()};
+    }).filter(x=>x&&x.email);
+    const r=await rpc('admin_survey_set_recipients',{p_id:curSurvey.id,p:list});
+    M.textContent=`Saved — ${r.total} recipient${r.total===1?'':'s'}.`;
+    await svLoadList();
+    await svOpenSurvey(curSurvey.id);
+  }catch(e){M.textContent='Could not save.';M.classList.add('bad');}
+}
+
+async function svSend(opts){
+  const M=$('svSendMsg');M.classList.remove('bad');M.textContent='Sending…';
+  try{
+    const r=await fetch(FN_BASE+'/send-survey',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(Object.assign({passcode:pass,survey_id:curSurvey.id,action:'send'},opts))});
+    const j=await r.json();
+    if(!r.ok||j.error){M.textContent=j.error||'Could not send.';M.classList.add('bad');return;}
+    if(j.tested){M.textContent=`Test invitation sent to ${j.tested}. Nothing was sent to the team.`;}
+    else{
+      M.textContent=`${j.sent} invitation${j.sent===1?'':'s'} sent`+
+        (j.failed&&j.failed.length?`, ${j.failed.length} failed.`:'.')+
+        (j.considered===0?' Nobody matched — everyone in that group has already been handled.':'');
+      if(j.failed&&j.failed.length)M.classList.add('bad');
+      await svLoadList();await svOpenSurvey(curSurvey.id);
+    }
+  }catch(e){M.textContent='Could not send.';M.classList.add('bad');}
+}
+
+async function svResults(){
+  const R=$('svRes');
+  try{
+    const d=await rpc('admin_survey_results',{p_id:curSurvey.id});
+    if(d.locked){
+      R.innerHTML=`<p class="note2">Results are hidden until <b>${d.min_responses}</b> people have answered — ${d.responses} so far. This protects the promise of anonymity made to the team; with only a couple of answers, combined totals would still identify individuals.</p>`;
+      return;
+    }
+    const defs=[];
+    for(const sec of curSurvey.definition.sections){
+      for(const g of (sec.groups||[]))for(const q of g.questions)defs.push(q);
+      for(const q of (sec.questions||[]))defs.push(q);
+    }
+    const lead=curSurvey.leader_name||'your team leader';
+    let h=`<p class="note2">Based on <b>${d.responses}</b> anonymous responses.</p><table><tr><th style="font-size:12px">#</th><th style="font-size:12px">Question</th><th style="font-size:12px">Average</th><th style="font-size:12px">Answers</th></tr>`;
+    for(const q of defs){
+      const t=d.tally[String(q.n)]||{};
+      const parts=Object.entries(t).sort((a,b)=>b[1]-a[1]);
+      let avg='—';
+      if(q.type==='rating'){
+        let sum=0,n=0;
+        for(const [k,v] of parts){const num=parseInt(k,10);if(!isNaN(num)){sum+=num*v;n+=v;}}
+        if(n)avg=(sum/n).toFixed(2);
+      }
+      h+=`<tr><td>${q.n}</td><td style="font-size:12.5px">${esc(String(q.text).replace(/\{\{leader\}\}/g,lead))}</td>
+        <td><b>${avg}</b></td>
+        <td style="font-size:12px;color:#555">${parts.map(([k,v])=>`${esc(k)}: ${v}`).join(' · ')||'—'}</td></tr>`;
+    }
+    h+='</table>';R.innerHTML=h;
+  }catch(e){R.innerHTML='<p class="msg bad">Could not load results.</p>';}
 }
 
 /* ---------- Expired Subscriptions (HubSpot) ---------- */
