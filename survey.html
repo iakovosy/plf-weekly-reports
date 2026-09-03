@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Team Feedback Survey — Philippou Law Firm</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="https://mmtzrsfnucwgjcixbzqa.supabase.co/functions/v1/logo?v=3">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--blue:#4F75FF;--navy:#27548A;--grey:#E2DDD9;--dgrey:#B3B3B3;--off:#F2F2F2;--ink:#101418}
+*{box-sizing:border-box;margin:0}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--off);color:var(--ink);min-height:100vh}
+.wrap{max-width:720px;margin:0 auto;padding:28px 18px 60px}
+.mast{background:var(--blue);border-radius:14px 14px 0 0;padding:24px 28px;color:#fff;display:flex;align-items:center;gap:18px}
+.mast img{width:56px;height:56px;border-radius:10px;display:block}
+.mast .firm{font-size:11px;letter-spacing:3px;color:#EAF0FF;font-weight:600}
+.mast h1{font-size:21px;font-weight:700;margin-top:5px;line-height:1.25}
+.mast .sub{font-size:13px;color:#EAF0FF;margin-top:5px}
+.card{background:#fff;border:1px solid var(--grey);border-top:0;border-radius:0 0 14px 14px;padding:30px}
+.anon{background:#EEF2FF;border-left:3px solid var(--blue);border-radius:0 8px 8px 0;padding:13px 16px;font-size:13px;line-height:1.6;color:#333;margin-bottom:20px}
+.scalenote{font-size:12px;color:#6b7280;line-height:1.6;background:#FAFAFB;border:1px solid var(--grey);border-radius:9px;padding:11px 14px;margin-bottom:26px}
+.section{margin-bottom:30px}
+.section > h2{font-size:12px;letter-spacing:2px;color:var(--blue);font-weight:700;text-transform:uppercase;border-bottom:2px solid var(--blue);display:block;padding-bottom:6px;margin-bottom:16px}
+.grp{font-size:13px;font-weight:700;color:var(--navy);margin:22px 0 12px}
+.q{margin-bottom:20px;padding-bottom:4px}
+.q .qt{display:block;font-size:14px;font-weight:500;margin-bottom:9px;line-height:1.5}
+.q .qt b{font-weight:700;color:var(--navy);margin-right:5px}
+.scale{display:flex;gap:6px;flex-wrap:wrap}
+.scale button{flex:1;min-width:44px;padding:10px 0;border:1.5px solid var(--grey);background:#fff;border-radius:8px;font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;color:#444}
+.scale button:hover{border-color:var(--blue)}
+.scale button.sel{background:var(--blue);color:#fff;border-color:var(--blue)}
+.opts{display:flex;flex-direction:column;gap:7px}
+.opts button{text-align:left;padding:11px 14px;border:1.5px solid var(--grey);background:#fff;border-radius:9px;font:inherit;font-size:13.5px;cursor:pointer;color:#333;line-height:1.4}
+.opts button:hover{border-color:var(--blue)}
+.opts button.sel{background:var(--blue);color:#fff;border-color:var(--blue);font-weight:600}
+.q.miss .qt{color:#b00020}
+.q.miss .scale button,.q.miss .opts button{border-color:#f3b6c0}
+.bar{position:sticky;top:0;z-index:5;background:rgba(255,255,255,.96);backdrop-filter:blur(6px);border-bottom:1px solid var(--grey);padding:10px 0 9px;margin:-30px -30px 20px;padding-left:30px;padding-right:30px}
+.bar .track{height:6px;background:var(--off);border-radius:4px;overflow:hidden}
+.bar .fill{height:100%;background:var(--blue);width:0;transition:width .25s}
+.bar .txt{font-size:12px;color:#6b7280;margin-top:6px;font-weight:500}
+.submit{width:100%;background:var(--blue);color:#fff;border:0;border-radius:10px;padding:15px;font:inherit;font-size:15px;font-weight:700;cursor:pointer;margin-top:6px}
+.submit:hover{background:#3f63e8}.submit:disabled{opacity:.55;cursor:default}
+.err{color:#b00020;font-size:13px;margin-top:12px;display:none;font-weight:500}
+.state{text-align:center;padding:70px 20px;font-size:15px;color:#555;line-height:1.7}
+.done{text-align:center;padding:60px 24px}
+.done .tick{width:64px;height:64px;border-radius:50%;background:var(--blue);color:#fff;font-size:30px;line-height:64px;margin:0 auto 18px}
+.done h2{font-size:20px;color:var(--navy);margin-bottom:10px}
+.done p{font-size:14px;color:#555;line-height:1.7;max-width:460px;margin:0 auto}
+.foot{text-align:center;font-size:11px;color:var(--dgrey);margin-top:22px}
+.hidden{display:none}
+.banner{background:#FFF6DC;border:1px solid #E8D48A;border-radius:9px;padding:11px 14px;font-size:13px;color:#6b5400;margin-bottom:18px;line-height:1.6}
+@media(max-width:520px){
+  .card{padding:22px 18px}.mast{padding:20px 20px}
+  .bar{margin:-22px -18px 18px;padding-left:18px;padding-right:18px}
+  .scale button{min-width:40px;font-size:13px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="mast">
+    <img src="https://mmtzrsfnucwgjcixbzqa.supabase.co/functions/v1/logo?v=3" alt="PLF">
+    <div>
+      <div class="firm">PHILIPPOU LAW FIRM</div>
+      <h1 id="title">Team Feedback Survey</h1>
+      <div class="sub" id="subline">Loading…</div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="state" id="loading">Loading the survey…</div>
+    <div class="state hidden" id="badtoken">This survey link is not valid.<br>Please use the link from your invitation email.</div>
+    <div class="state hidden" id="closed">This survey is closed.<br>Thank you for your interest.</div>
+    <div class="state hidden" id="already">You have already completed this survey.<br>Thank you — your answers were recorded anonymously.</div>
+
+    <form id="form" class="hidden" onsubmit="return false">
+      <div class="bar">
+        <div class="track"><div class="fill" id="fill"></div></div>
+        <div class="txt" id="prog">0 of 0 answered</div>
+      </div>
+      <div id="banner" class="banner hidden"></div>
+      <div class="anon" id="anon"></div>
+      <div class="scalenote" id="scalenote"></div>
+      <div id="body"></div>
+      <button class="submit" id="send">Submit my answers</button>
+      <div class="err" id="err"></div>
+    </form>
+
+    <div class="done hidden" id="done">
+      <div class="tick">&#10003;</div>
+      <h2>Thank you</h2>
+      <p id="closing"></p>
+    </div>
+  </div>
+  <div class="foot">All Rights Reserved &copy; Philippou Law Firm</div>
+</div>
+
+<script type="module">
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+const sb = createClient('https://mmtzrsfnucwgjcixbzqa.supabase.co','sb_publishable_4LJjfpjIa1tBlIuTAE4kGg_xOv6f5Of');
+const $ = (id) => document.getElementById(id);
+const params = new URLSearchParams(location.search);
+const token = params.get('token');
+
+const answers = {};   // question number -> string, or array for multi-select
+let questions = [];   // flat list, in display order
+let survey = null;
+
+const esc = (s) => String(s == null ? '' : s)
+  .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+// The definition stores {{leader}} rather than a name so the same survey can be
+// re-used for another team without editing 25 separate questions.
+const withLeader = (s) => String(s).replace(/\{\{leader\}\}/g, survey.leader_name);
+
+function show(id){
+  for (const k of ['loading','badtoken','closed','already','form','done']) {
+    $(k).classList.toggle('hidden', k !== id);
+  }
+}
+
+function questionHtml(q){
+  const body = q.type === 'choice'
+    ? `<div class="opts">${q.options.map((o,i)=>
+        `<button type="button" data-q="${q.n}" data-v="${esc(o)}">${esc(o)}</button>`).join('')}</div>`
+    : `<div class="scale">${survey.definition.scale.map((o)=>
+        `<button type="button" data-q="${q.n}" data-v="${esc(o)}">${esc(o)}</button>`).join('')}</div>`;
+  return `<div class="q" id="q${q.n}">
+    <span class="qt"><b>${q.n}.</b>${esc(withLeader(q.text)).replace(/^\s*\d+\.\s*/,'')}</span>
+    ${body}</div>`;
+}
+
+function render(){
+  $('title').textContent = survey.title;
+  $('anon').textContent = survey.intro;
+  $('scalenote').textContent = survey.scale_note;
+  $('closing').textContent = survey.closing;
+
+  let html = '';
+  questions = [];
+  for (const sec of survey.definition.sections){
+    html += `<div class="section"><h2>${esc(withLeader(sec.title))}</h2>`;
+    for (const g of (sec.groups || [])){
+      html += `<div class="grp">${esc(g.title)}</div>`;
+      for (const q of g.questions){ questions.push(q); html += questionHtml(q); }
+    }
+    for (const q of (sec.questions || [])){ questions.push(q); html += questionHtml(q); }
+    html += '</div>';
+  }
+  $('body').innerHTML = html;
+  $('subline').textContent = `${questions.length} questions · about 6–8 minutes · anonymous`;
+
+  $('body').addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-q]');
+    if (!b) return;
+    const n = +b.dataset.q, v = b.dataset.v;
+    const q = questions.find((x) => x.n === n);
+    const box = $('q' + n);
+    box.classList.remove('miss');
+
+    if (q.type === 'choice' && q.max > 1){
+      const cur = new Set(answers[n] || []);
+      if (cur.has(v)) cur.delete(v);
+      else { if (cur.size >= q.max) return; cur.add(v); }
+      answers[n] = [...cur];
+      box.querySelectorAll('button[data-q]').forEach((x) =>
+        x.classList.toggle('sel', cur.has(x.dataset.v)));
+    } else {
+      answers[n] = v;
+      box.querySelectorAll('button[data-q]').forEach((x) =>
+        x.classList.toggle('sel', x.dataset.v === v));
+    }
+    progress();
+  });
+  progress();
+}
+
+const answered = () => questions.filter((q) => {
+  const a = answers[q.n];
+  return Array.isArray(a) ? a.length > 0 : !!a;
+}).length;
+
+function progress(){
+  const n = answered(), t = questions.length;
+  $('fill').style.width = (t ? (n / t) * 100 : 0) + '%';
+  $('prog').textContent = `${n} of ${t} answered`;
+}
+
+$('send').onclick = async () => {
+  const missing = questions.filter((q) => {
+    const a = answers[q.n];
+    return Array.isArray(a) ? a.length === 0 : !a;
+  });
+  if (missing.length){
+    questions.forEach((q) => $('q' + q.n).classList.toggle('miss', missing.includes(q)));
+    $('err').textContent = `Please answer all questions — ${missing.length} still to go. The first is question ${missing[0].n}.`;
+    $('err').style.display = 'block';
+    $('q' + missing[0].n).scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return;
+  }
+  $('err').style.display = 'none';
+  $('send').disabled = true;
+  $('send').textContent = 'Submitting…';
+  const payload = {};
+  for (const q of questions){
+    payload[q.n] = Array.isArray(answers[q.n]) ? answers[q.n].join(' | ') : answers[q.n];
+  }
+  const { error } = await sb.rpc('submit_survey', { p_token: token, p: payload });
+  if (error){
+    $('send').disabled = false;
+    $('send').textContent = 'Submit my answers';
+    $('err').textContent = /ALREADY/.test(error.message)
+      ? 'This survey has already been completed from this link.'
+      : /CLOSED/.test(error.message)
+        ? 'This survey is not open for responses.'
+        : 'Could not submit — please try again in a moment.';
+    $('err').style.display = 'block';
+    return;
+  }
+  show('done');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+};
+
+(async () => {
+  if (!token){ show('badtoken'); $('subline').textContent = ''; return; }
+  const { data, error } = await sb.rpc('get_survey_by_token', { p_token: token });
+  if (error || !data){ show('badtoken'); $('subline').textContent = ''; return; }
+  survey = data;
+  if (data.already_submitted){ show('already'); $('subline').textContent = ''; return; }
+  render();
+  if (data.status !== 'open'){
+    // A draft survey is fully viewable but cannot be submitted — the database
+    // refuses it too, so a preview can never leave a stray response behind.
+    $('banner').textContent = data.status === 'draft'
+      ? 'Preview — this survey has not been opened yet, so answers cannot be submitted.'
+      : 'This survey is closed and is no longer accepting answers.';
+    $('banner').classList.remove('hidden');
+    $('send').disabled = true;
+    $('send').textContent = data.status === 'draft' ? 'Preview only' : 'Closed';
+  }
+  show('form');
+})();
+</script>
+</body>
+</html>
