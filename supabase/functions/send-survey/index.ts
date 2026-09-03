@@ -37,7 +37,7 @@ function inviteHtml(o: {
   const greeting = o.name ? o.name.split(/\s+/)[0] : "colleague";
   return brandedShell({
     title: o.title,
-    preview: "Your answers are anonymous. It takes about 6–8 minutes.",
+    preview: `Your answers are anonymous. It takes about ${o.minutes}.`,
     body: `
       <p style="margin:0 0 14px">Dear ${greeting},</p>
       <p style="margin:0 0 14px">We are asking the team for feedback on how we lead and how we work
@@ -82,7 +82,9 @@ Deno.serve(async (req) => {
 
     const action = String(body.action ?? "send");
     const signature = settings.email_signature || "";
-    const minutes = "6–8 minutes";
+    // The stated length comes from the survey itself. A survey that was
+    // shortened must not still promise the old duration in its invitation.
+    const minutes = String((survey.definition || {}).minutes || "a few minutes");
 
     if (action === "test") {
       const to = String(body.email ?? "").trim();

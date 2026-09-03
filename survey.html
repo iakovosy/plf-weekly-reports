@@ -141,7 +141,8 @@ function render(){
   let html = '';
   questions = [];
   for (const sec of survey.definition.sections){
-    html += `<div class="section"><h2>${esc(withLeader(sec.title))}</h2>`;
+    const secTitle = (sec.title || '').trim();
+    html += `<div class="section">${secTitle ? `<h2>${esc(withLeader(secTitle))}</h2>` : ''}`;
     for (const g of (sec.groups || [])){
       html += `<div class="grp">${esc(g.title)}</div>`;
       for (const q of g.questions){ questions.push(q); html += questionHtml(q); }
@@ -150,7 +151,8 @@ function render(){
     html += '</div>';
   }
   $('body').innerHTML = html;
-  $('subline').textContent = `${questions.length} questions · about 6–8 minutes · anonymous`;
+  const mins = survey.definition.minutes || 'a few minutes';
+  $('subline').textContent = `${questions.length} questions · about ${mins} · anonymous`;
 
   $('body').addEventListener('click', (e) => {
     const b = e.target.closest('button[data-q]');
