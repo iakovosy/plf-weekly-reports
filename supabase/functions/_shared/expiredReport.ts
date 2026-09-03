@@ -7,7 +7,7 @@
 // of the two being wrong — so the query, the stage exclusions and the layout all
 // live here rather than being written twice.
 import type { Settings } from "./settings.ts";
-import { fetchPipeline, hsSearch } from "./hubspot.ts";
+import { fetchOwners, fetchPipeline, hsSearch } from "./hubspot.ts";
 import { prettifyOrDash } from "./time.ts";
 import {
   COLORS,
@@ -22,7 +22,7 @@ export type ExpiredRow = {
   subject: string;
   end: string;
   days: number;
-  renewal: string;
+  owner: string;
   stage: string;
   stageId?: string;
   ownerId?: string;
@@ -37,7 +37,7 @@ const COLS = [
   { t: "Stage", w: 95 },
   { t: "Expired on", w: 68 },
   { t: "Days", w: 37 },
-  { t: "Renewal status", w: 100 },
+  { t: "Ticket owner", w: 100 },
 ];
 const TW = COLS.reduce((s, c) => s + c.w, 0);
 
@@ -47,6 +47,9 @@ export type ExpiredData = {
   excludedCount: number;
   excludedNote: string;
   pipelineLabel: string;
+  // The owner lookup is returned so the weekly sender can reuse it for its
+  // per-owner emails instead of asking HubSpot for the same list twice.
+  owners: { map: Map<string, string>; names: Map<string, string>; error: string | null };
 };
 
 /**
@@ -63,7 +66,7 @@ export async function fetchExpiredRows(
   const pipeline = settings.expired_report_pipeline || "0";
   const todayMs = Date.parse(todayIso + "T00:00:00Z");
 
-  const [tickets, pipeInfo] = await Promise.all([
+  const [tickets, pipeInfo, ownerInfo] = await Promise.all([
     hsSearch(token, "tickets", {
       filterGroups: [{
         filters: [
@@ -75,13 +78,13 @@ export async function fetchExpiredRows(
       properties: [
         "subject",
         "subscription_end_date",
-        "subscription_renewal_status",
         "hs_pipeline_stage",
         "hubspot_owner_id",
       ],
       limit: 100,
     }),
     fetchPipeline(token, "tickets", pipeline),
+    fetchOwners(token),
   ]);
 
   // Excluded stages may be given as labels or as raw stage ids.
@@ -109,7 +112,7 @@ export async function fetchExpiredRows(
       subject: p.subject || String(t.id),
       end,
       days,
-      renewal: p.subscription_renewal_status || "-",
+      owner: ownerInfo.names.get(String(p.hubspot_owner_id || "")) || "-",
       stageId: String(p.hs_pipeline_stage),
       stage: pipeInfo.stages.get(String(p.hs_pipeline_stage))?.label || raw(p.hs_pipeline_stage),
       ownerId: String(p.hubspot_owner_id || ""),
@@ -128,6 +131,7 @@ export async function fetchExpiredRows(
     excludedCount,
     excludedNote,
     pipelineLabel: pipeInfo.label || "Annual Corporate Services",
+    owners: ownerInfo,
   };
 }
 
@@ -189,7 +193,7 @@ export async function buildExpiredPdf(
         raw(r.stage),
         prettifyOrDash(r.end),
         String(r.days),
-        raw(r.renewal),
+        raw(r.owner),
       ].map(clean);
       const cl = vals.map((v, i) => wrap(v, COLS[i].w, 8.5, i === 1 ? bold : font));
       const rowH = Math.max(...cl.map((l) => l.length)) * 11 + 8;

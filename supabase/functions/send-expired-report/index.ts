@@ -17,7 +17,6 @@ import { cyprusNow, prettyDate } from "../_shared/time.ts";
 import { getSettings, splitRecipients, unauthorized } from "../_shared/settings.ts";
 import { sendEmail } from "../_shared/email.ts";
 import { alreadyLogged, inScheduleWindow, logError, markSent } from "../_shared/schedule.ts";
-import { fetchOwners } from "../_shared/hubspot.ts";
 // The ticket query and the PDF live in _shared so the console's on-demand
 // button produces exactly the same document as this weekly email.
 import { buildExpiredPdf, fetchExpiredRows } from "../_shared/expiredReport.ts";
@@ -88,7 +87,7 @@ Deno.serve(async (req) => {
     }
 
     stage = "fetch tickets";
-    const { rows, excludedNote, pipelineLabel, excludedCount } = await fetchExpiredRows(
+    const { rows, excludedNote, pipelineLabel, excludedCount, owners: ownerInfo } = await fetchExpiredRows(
       settings,
       token,
       now.date,
@@ -155,7 +154,7 @@ Deno.serve(async (req) => {
         const list = (ownRecs || []).filter((x: any) => x.email);
         owners.enabled = list.length;
         if (list.length) {
-          const ow = await fetchOwners(token);
+          const ow = ownerInfo;
           if (ow.error) {
             owners.lookupError = ow.error;
             await logError(

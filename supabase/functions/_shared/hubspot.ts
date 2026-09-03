@@ -117,12 +117,15 @@ export async function fetchPipeline(
   }
 }
 
-// Owner id -> lowercased email. Needs the crm.objects.owners.read scope; on
-// failure the error string is returned rather than thrown.
+// Owner id -> lowercased email (`map`) and owner id -> display name (`names`).
+// The expired report shows the name; the per-owner sends match on the email.
+// Needs the crm.objects.owners.read scope; on failure the error string is
+// returned rather than thrown, so a caller can degrade instead of dying.
 export async function fetchOwners(
   token: string,
-): Promise<{ map: Map<string, string>; error: string | null }> {
+): Promise<{ map: Map<string, string>; names: Map<string, string>; error: string | null }> {
   const map = new Map<string, string>();
+  const names = new Map<string, string>();
   try {
     let after: string | undefined = undefined;
     for (let page = 0; page < 10; page++) {
@@ -132,12 +135,14 @@ export async function fetchOwners(
       );
       for (const o of (res.results || [])) {
         if (o.email) map.set(String(o.id), String(o.email).toLowerCase());
+        const nm = [o.firstName, o.lastName].filter(Boolean).join(" ").trim();
+        if (nm || o.email) names.set(String(o.id), nm || String(o.email));
       }
       after = res.paging?.next?.after;
       if (!after) break;
     }
-    return { map, error: null };
+    return { map, names, error: null };
   } catch (e) {
-    return { map, error: String(e) };
+    return { map, names, error: String(e) };
   }
 }

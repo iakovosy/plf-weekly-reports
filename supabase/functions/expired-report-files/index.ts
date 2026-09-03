@@ -82,7 +82,7 @@ Deno.serve(async (req) => {
       if (!token) return json({ error: "hubspot_token not set" }, 500);
       const now = cyprusNow();
       const pretty = prettyDate(now.date);
-      const { rows, excludedNote, pipelineLabel, excludedCount } =
+      const { rows, excludedNote, pipelineLabel, excludedCount, owners } =
         await fetchExpiredRows(settings, token, now.date);
       const pdfB64 = await buildExpiredPdf(pretty, pipelineLabel, rows, excludedNote, "Current List");
       return json({
@@ -92,6 +92,9 @@ Deno.serve(async (req) => {
         excludedCount,
         pipelineLabel,
         asOf: pretty,
+        // Surfaced so the console can say why the owner column is blank rather
+        // than silently showing dashes.
+        ownerLookupError: owners.error,
       });
     }
 
