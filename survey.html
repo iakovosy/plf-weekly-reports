@@ -219,6 +219,8 @@ $('send').onclick = async () => {
     $('send').textContent = 'Submit my answers';
     $('err').textContent = /ALREADY/.test(error.message)
       ? 'This survey has already been completed from this link.'
+      : /PREVIEW/.test(error.message)
+        ? 'This is a preview link — answers from it are not recorded.'
       : /CLOSED/.test(error.message)
         ? 'This survey is not open for responses.'
         : 'Could not submit — please try again in a moment.';
@@ -236,7 +238,14 @@ $('send').onclick = async () => {
   survey = data;
   if (data.already_submitted){ show('already'); $('subline').textContent = ''; return; }
   render();
-  if (data.status !== 'open'){
+  if (data.is_preview){
+    // A preview link is for reading the survey, not answering it. The database
+    // refuses it too, so a reviewer can click anything without leaving a trace.
+    $('banner').textContent = 'Preview link — this is exactly what the team will see. Answers cannot be submitted from this link.';
+    $('banner').classList.remove('hidden');
+    $('send').disabled = true;
+    $('send').textContent = 'Preview only';
+  } else if (data.status !== 'open'){
     // A draft survey is fully viewable but cannot be submitted — the database
     // refuses it too, so a preview can never leave a stray response behind.
     $('banner').textContent = data.status === 'draft'
