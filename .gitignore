@@ -7,5 +7,9 @@ client-conversation-review-*.pdf
 *-review-*.pdf
 report.html
 
+# Locally generated reports. Speed-to-lead exports list lead names and phone
+# numbers, so they must never reach the deployed site.
+exports/
+
 # Local scratch
 *.tmp

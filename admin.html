@@ -837,6 +837,11 @@ async function loadExpired(){
       <div class="note">Tickets in the selected stages are hidden from the PDF. If the stage list cannot be loaded, type stage names or ids, comma-separated.</div></div>
     <div class="row"><button class="btn" id="expSave">Save</button></div>
     <div class="msg" id="expMsg"></div>
+    <div class="sechead" style="margin-top:28px">Get the list now</div>
+    <p class="note2">Builds the same PDF the weekly email sends, from HubSpot as it stands at this moment. Nothing is emailed and nothing is added to the archive below — the schedule still owns that.</p>
+    <div class="row"><button class="btn" id="expNow">Download current PDF</button>
+      <span id="expNowInfo" style="font-size:13px;color:#666"></span></div>
+    <div class="msg" id="expNowMsg"></div>
     <div class="sechead" style="margin-top:28px">Weekly PDF archive</div>
     <p class="note2">Every completed run stores its PDF here (previews are not archived).</p>
     <div class="tablewrap" id="expFiles"><p style="font-size:13px;color:#666">Loading…</p></div>
@@ -864,8 +869,36 @@ async function loadExpired(){
       $('expMsg').textContent=n?`${n} change${n>1?'s':''} saved — active from the next hourly tick.`:'No changes to save.';
     }catch(e){$('expMsg').textContent='Could not save — a value was rejected.';$('expMsg').classList.add('bad');}
   };
+  $('expNow').onclick=async()=>{
+    const b=$('expNow'),t=b.textContent;
+    b.disabled=true;b.textContent='Building…';
+    $('expNowMsg').textContent='';$('expNowMsg').classList.remove('bad');$('expNowInfo').textContent='';
+    try{
+      const r=await fetch(FN_BASE+'/expired-report-files',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({passcode:pass,action:'generate'})});
+      if(!r.ok)throw new Error('generate '+r.status);
+      const j=await r.json();
+      if(j.error||!j.pdfB64)throw new Error(j.error||'no pdf');
+      saveB64Pdf(j.pdfB64,j.filename||'expired-subscriptions.pdf');
+      $('expNowInfo').textContent=`${j.count} expired ticket${j.count===1?'':'s'} as of ${j.asOf}`
+        +(j.excludedCount?` · ${j.excludedCount} hidden by the stage filter`:'');
+    }catch(e){
+      $('expNowMsg').textContent='Could not build the PDF. HubSpot may be unreachable — try again in a moment.';
+      $('expNowMsg').classList.add('bad');
+    }
+    b.disabled=false;b.textContent=t;
+  };
   loadExpiredStages();
   loadExpiredFiles();
+}
+/* The generate action hands back base64 rather than a storage URL, because an
+   on-demand pull is never archived — there is no file to sign a link to. */
+function saveB64Pdf(b64,name){
+  const bin=atob(b64),buf=new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++)buf[i]=bin.charCodeAt(i);
+  const url=URL.createObjectURL(new Blob([buf],{type:'application/pdf'}));
+  const a=document.createElement('a');
+  a.href=url;a.download=name;document.body.appendChild(a);a.click();
+  setTimeout(()=>{URL.revokeObjectURL(url);a.remove();},1000);
 }
 async function loadExpiredStages(){
   const load=$('exp_stageLoad'),dd=$('exp_stageDD');
