@@ -326,11 +326,18 @@ function renderNav(){
       /* Stored documents sit alongside the department's reports. */
       const dk=DOCKEY+d;
       const ds=document.createElement('button');ds.type='button';
-      ds.className='sub'+(dk===curReport?' sel':'');ds.textContent='Documents';
+      ds.className='sub'+(dk===curReport?' sel':'');ds.textContent=docLabelFor(d);
       ds.onclick=()=>{curReport=(curReport===dk?null:dk);renderNav();renderMain();};
       nav.appendChild(ds);
       /* Staff surveys. Sales only for now — add the department here when
          another team needs one; nothing else is department-specific. */
+      if(PERF_DEPTS.includes(d)){
+        const pk=PERFKEY+d;
+        const ps=document.createElement('button');ps.type='button';
+        ps.className='sub'+(pk===curReport?' sel':'');ps.textContent='Rep performance';
+        ps.onclick=()=>{curReport=(curReport===pk?null:pk);renderNav();renderMain();};
+        nav.appendChild(ps);
+      }
       if(SURVEY_DEPTS.includes(d)){
         const sk=SURVEYKEY+d;
         const ss=document.createElement('button');ss.type='button';
@@ -363,8 +370,16 @@ function renderMain(){
     const dept=curReport.slice(DOCKEY.length);
     $('reportView').classList.add('hidden');
     $('deptView').classList.remove('hidden');
-    $('crumb').innerHTML=`${esc(dept)} / <b>Documents</b>`;
+    $('crumb').innerHTML=`${esc(dept)} / <b>${esc(docLabelFor(dept))}</b>`;
     loadDocumentsPage(dept);
+    return;
+  }
+  if(curReport&&curReport.indexOf(PERFKEY)===0){
+    const dept=curReport.slice(PERFKEY.length);
+    $('reportView').classList.add('hidden');
+    $('deptView').classList.remove('hidden');
+    $('crumb').innerHTML=`${esc(dept)} / <b>Rep performance</b>`;
+    loadPerfPage(dept);
     return;
   }
   if(curReport&&curReport.indexOf(SURVEYKEY)===0){
@@ -755,7 +770,11 @@ $('addRecip2').onclick=async()=>{
 };
 
 /* ---------- Department documents ---------- */
-/* curReport is set to DOCKEY + <department name> when the Documents entry is chosen. */
+/* curReport is set to DOCKEY + <department name> when the stored-files entry is
+   chosen. Sales calls that entry "Reports"; every other department still calls it
+   "Documents". Add a department here to rename its entry too. */
+const DOCLABEL = { Sales: 'Reports' };
+const docLabelFor = (dept) => DOCLABEL[dept] || 'Documents';
 const DOCKEY='docs::';
 /* Storage folders are a fixed set; map a department name onto one. */
 function docFolderFor(dept){
@@ -832,6 +851,53 @@ function doDocUpload(){
   };
   fr.onerror=()=>{msg.textContent='Could not read that file.';};
   fr.readAsDataURL(f);
+}
+
+/* ---------- Sales rep performance ----------
+   One report, not one per metric: connected calls -> meetings -> deals ->
+   converted is a funnel, and the useful numbers are the ratios between the
+   stages, which cannot be computed across separate reports.
+   The period is a parameter rather than three separate reports, because the
+   only reason the HubSpot dashboard repeats each metric per period is that a
+   dashboard card cannot take one. */
+const PERFKEY='perf::';
+const PERF_DEPTS=['Sales'];
+
+const PERF_PERIODS=[
+  {k:'this-month', l:'This month so far', d:'compared with the whole of last month'},
+  {k:'last-month', l:'Last month',        d:'compared with the month before it'},
+  {k:'year',       l:'This year so far',  d:'compared with last year'},
+];
+
+function loadPerfPage(dept){
+  $('deptView').innerHTML=`<div class="panel">
+    <div class="sechead">${esc(dept)} — rep performance</div>
+    <p class="note2">Each rep's funnel for a period, with the previous period beside every figure, as a PDF you can keep and share. The same numbers are live in HubSpot; what this adds is the conversion rate between the stages.</p>
+    <p class="note2"><b>Connected calls</b> and <b>median call duration</b> use the same definitions as your HubSpot dashboard — both were checked against it figure for figure. <b>Meetings</b> means deals that reached Quote sent.</p>
+    <div class="row" id="perfBtns">
+      ${PERF_PERIODS.map(p=>`<button class="btn" data-p="${att(p.k)}">${esc(p.l)}</button>`).join('')}
+    </div>
+    <p class="note2" id="perfHint">${PERF_PERIODS.map(p=>`<b>${esc(p.l)}</b> — ${esc(p.d)}`).join('<br>')}</p>
+    <div class="msg" id="perfMsg"></div>
+  </div>`;
+  $('perfBtns').querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>perfSend(b.dataset.p));
+}
+
+async function perfSend(period){
+  const M=$('perfMsg');M.classList.remove('bad');
+  const to=prompt('Email the report to which address?', cfgSettings.sales_deals_report_recipient||cfgSettings.report_recipient||'');
+  if(!to)return;
+  M.textContent='Building the report — this reads a lot from HubSpot and can take a minute…';
+  try{
+    const r=await fetch(FN_BASE+'/send-sales-rep-report',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({passcode:pass,period,to:to.trim()})});
+    const j=await r.json();
+    if(!r.ok||j.error){M.textContent=j.error||'Could not build the report.';M.classList.add('bad');return;}
+    if(j.skipped){M.textContent='Skipped: '+j.reason;M.classList.add('bad');return;}
+    M.textContent=`Sent to ${to.trim()} — ${j.current} against ${j.previous}, ${j.reps} rep${j.reps===1?'':'s'}.`+
+      (j.unmatched&&j.unmatched.length?` Note: ${j.unmatched.join(', ')} had no matching HubSpot user, so their call figures read zero.`:'');
+    if(j.unmatched&&j.unmatched.length)M.classList.add('bad');
+  }catch(e){M.textContent='Could not build the report.';M.classList.add('bad');}
 }
 
 /* ---------- Staff surveys ----------
