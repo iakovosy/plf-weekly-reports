@@ -33,8 +33,7 @@
 //                     have a duration recorded. Calls with no duration are
 //                     excluded, not counted as zero - verified at 95s for the
 //                     same rep/month, matching the dashboard.
-//   Meetings scheduled
-//                     deals CREATED during the period. In this firm a deal is
+//   Meetings booked   deals CREATED during the period. In this firm a deal is
 //                     created at the moment a meeting is booked with the lead -
 //                     the first stage of the pipeline is literally "Meeting
 //                     Scheduled" - so the meeting and the deal are one event.
@@ -44,6 +43,15 @@
 //   Quote sent        deals that entered the Quote sent stage during the
 //                     period. A later milestone, kept under its own name.
 //   Converted         deals entering the Converted stage during the period.
+//   Company regs      of those Converted deals, the ones whose service category
+//                     is Company Registration. A SUBSET of Converted, never an
+//                     addition to it. The category lives on
+//                     serv_category_corporate, not on service_category, which
+//                     is present but unpopulated - checked, and the wrong one
+//                     returns zero for every month. Verified against the
+//                     dashboard card "Sales reps - Company Registration - last
+//                     month": both give 19 for August 2026, and the same split
+//                     across reps.
 //
 // THE ORDER OF THE FUNNEL MATTERS, AND WAS WRONG ONCE
 // A deal is created at Meeting Scheduled and reaches Quote sent later. An
@@ -61,8 +69,8 @@
 // Dividing "converted this month" by "created this month" compares two
 // different sets of deals: most deals converting in August were created in June
 // or July. That is not a conversion rate. So the second table follows a single
-// COHORT instead - of the meetings scheduled in the period, how many have
-// since reached Quote sent or Converted. Those figures cannot exceed 100%, and
+// COHORT instead - of the meetings booked in the period, how many have since
+// reached Quote sent or Converted. Those figures cannot exceed 100%, and
 // they answer the question a conversion rate is supposed to answer.
 //
 // Calls are attributed by HubSpot OWNER; deals by the sales_rep property.
@@ -106,6 +114,13 @@ const norm = (s: string) => String(s || "").toLowerCase().replace(/\s+/g, " ").t
 const repsOn = (d: any): string[] =>
   String(d?.properties?.sales_rep || "")
     .split(";").map((x) => x.trim()).filter(Boolean);
+
+// serv_category_corporate is multi-select too: a deal can read
+// "Company Registration;Nominee Secretary;Nominee Office", so test for
+// membership rather than equality.
+const isCompanyReg = (d: any): boolean =>
+  String(d?.properties?.serv_category_corporate || "")
+    .split(";").map((x) => x.trim()).includes("Company Registration");
 
 type Range = { start: number; end: number; label: string; short: string };
 
@@ -158,9 +173,9 @@ type RepRow = {
   name: string;
   calls: number;
   dur: number | null;
-  scheduled: number;   // deals created = meetings scheduled; see header note
-  quote: number;       // reached Quote sent during the period
+  scheduled: number;   // deals created = meetings booked; see header note
   converted: number;
+  companyReg: number;  // of those converted, the Company Registration ones
   // cohort: of the meetings scheduled this period, how far they have got since
   cohort: number; cohortQuote: number; cohortConverted: number;
 };
@@ -350,13 +365,14 @@ Deno.serve(async (req) => {
     const createdCur = await dealsEntering(
       token, pipeline, "createdate", cur, [QUOTE, CONV].filter(Boolean),
     );
-    const quoteCur = QUOTE ? await dealsEntering(token, pipeline, QUOTE, cur) : [];
-    const convCur = await dealsEntering(token, pipeline, CONV, cur);
+    // Conversions carry their service category so the Company Registration
+    // subset can be counted here rather than in a second query.
+    const convCur = await dealsEntering(token, pipeline, CONV, cur, ["serv_category_corporate"]);
 
     const t = {
       scheduled: tally(createdCur),
-      quote: tally(quoteCur),
       converted: tally(convCur),
+      companyReg: tally(convCur.filter(isCompanyReg)),
     };
 
     // Cohort: follow the meetings scheduled in this period and see how far they
@@ -388,8 +404,8 @@ Deno.serve(async (req) => {
         calls: c.count,
         dur: c.median,
         scheduled: t.scheduled.get(key) || 0,
-        quote: t.quote.get(key) || 0,
         converted: t.converted.get(key) || 0,
+        companyReg: t.companyReg.get(key) || 0,
         cohort: k.n, cohortQuote: k.quote, cohortConverted: k.conv,
       });
     }
@@ -407,13 +423,13 @@ Deno.serve(async (req) => {
 
     const mainRows = rows.map((r) => [
       r.name, String(r.calls), secs(r.dur),
-      String(r.scheduled), String(r.quote), String(r.converted),
+      String(r.scheduled), String(r.converted), String(r.companyReg),
     ]);
     if (rows.length) {
       mainRows.push([
         "TEAM", String(sum((r) => r.calls)), "-",
-        String(sum((r) => r.scheduled)), String(sum((r) => r.quote)),
-        String(sum((r) => r.converted)),
+        String(sum((r) => r.scheduled)), String(sum((r) => r.converted)),
+        String(sum((r) => r.companyReg)),
       ]);
     }
 
@@ -431,18 +447,19 @@ Deno.serve(async (req) => {
     const sections: Section[] = [
       {
         title: `By sales rep — ${cur.label}`,
-        note: "A deal shared between two reps is counted for both.",
+        note: "Company regs converted is a SUBSET of Converted, not an addition to it: the converted deals whose service category is Company Registration. A deal shared between two reps is counted for both.",
         cols: [
-          { t: "Sales rep", w: 110 }, { t: "Conn. calls", w: 75 }, { t: "Median call", w: 75 },
-          { t: "Meetings scheduled", w: 105 }, { t: "Quote sent", w: 75 }, { t: "Converted", w: 75 },
+          { t: "Sales rep", w: 100 }, { t: "Conn. calls", w: 68 }, { t: "Median call", w: 68 },
+          { t: "Meetings booked", w: 88 }, { t: "Converted", w: 72 },
+          { t: "Company regs converted", w: 119 },
         ],
         rows: mainRows,
       },
       {
-        title: `What became of the meetings scheduled in ${cur.label}`,
-        note: `This follows ONLY the meetings scheduled in ${cur.label} and asks how far they have got since - the same deals all the way across, which is why nothing here can exceed 100%. Each cell gives the number of deals first, then what share of that rep's scheduled meetings it is.`,
+        title: `What became of the meetings booked in ${cur.label}`,
+        note: `This follows ONLY the meetings booked in ${cur.label} and asks how far they have got since - the same deals all the way across, which is why nothing here can exceed 100%. Each cell gives the number of deals first, then what share of that rep's booked meetings it is.`,
         cols: [
-          { t: "Sales rep", w: 150 }, { t: "Meetings scheduled", w: 120 },
+          { t: "Sales rep", w: 150 }, { t: "Meetings booked", w: 120 },
           { t: "Reached quote sent", w: 125 }, { t: "Converted", w: 120 },
         ],
         rows: cohortRows,
@@ -477,12 +494,12 @@ Deno.serve(async (req) => {
     <p style="margin:0 0 14px">Dear all,</p>
     <p style="margin:0 0 14px">Sales rep performance for <b>${cur.label}</b>.</p>
     <table style="border-collapse:collapse;margin:14px 0">
-      <tr><th style="${th}">Sales rep</th><th style="${th}">Connected calls</th><th style="${th}">Meetings scheduled</th><th style="${th}">Quote sent</th><th style="${th}">Converted</th></tr>
+      <tr><th style="${th}">Sales rep</th><th style="${th}">Connected calls</th><th style="${th}">Meetings booked</th><th style="${th}">Converted</th><th style="${th}">Company regs</th></tr>
       ${rows.map((r) =>
-        `<tr><td style="${td}">${r.name}</td><td style="${td};text-align:center">${r.calls}</td><td style="${td};text-align:center">${r.scheduled}</td><td style="${td};text-align:center">${r.quote}</td><td style="${td};text-align:center">${r.converted}</td></tr>`
+        `<tr><td style="${td}">${r.name}</td><td style="${td};text-align:center">${r.calls}</td><td style="${td};text-align:center">${r.scheduled}</td><td style="${td};text-align:center">${r.converted}</td><td style="${td};text-align:center">${r.companyReg}</td></tr>`
       ).join("")}
     </table>
-    <p style="margin:0 0 24px">The attached PDF adds median call length and what has since become of the meetings scheduled in ${cur.label}.</p>
+    <p style="margin:0 0 24px">Company regs is the Company Registration share of Converted, not an extra. The attached PDF adds median call length and what has since become of the meetings booked in ${cur.label}.</p>
     ${settings.email_signature || ""}
   </div>
 </body></html>`;
