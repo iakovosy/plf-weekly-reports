@@ -43,6 +43,12 @@
 // "443%" conversion rates - nonsense, and a reminder that a ratio between two
 // stages means nothing unless the stages are in the right order.
 //
+// ONE NUMBER PER CELL
+// The first version put both periods in one cell as "49 (63)". Nobody could
+// tell which was which - "49 is connected calls? or is 63?" - so each period
+// now has its own labelled column under its own month name, one block per rep.
+// A legend beside the numbers is not the same as a label on them.
+//
 // THE RATIOS ARE COHORT-BASED, NOT PERIOD-BASED
 // Dividing "converted this month" by "created this month" compares two
 // different sets of deals: most deals converting in August were created in June
@@ -139,7 +145,6 @@ const median = (xs: number[]): number | null => {
 };
 
 const secs = (ms: number | null) => ms == null ? "-" : `${Math.round(ms / 1000)}s`;
-const pair = (cur: string | number, prev: string | number) => `${cur}  (${prev})`;
 
 type RepRow = {
   name: string;
@@ -391,65 +396,83 @@ Deno.serve(async (req) => {
 
     stage = "build pdf";
     const sum = (f: (r: RepRow) => number) => rows.reduce((s, r) => s + f(r), 0);
-    const pct = (a: number, b: number) => b ? Math.round((a / b) * 100) + "%" : "-";
 
-    const funnelRows = rows.map((r) => [
-      r.name,
-      pair(r.calls, r.callsPrev),
-      pair(secs(r.dur), secs(r.durPrev)),
-      pair(r.created, r.createdPrev),
-      pair(r.meetings, r.meetingsPrev),
-      pair(r.converted, r.convertedPrev),
-      pair(r.disengaged, r.disengagedPrev),
-    ]);
-    if (rows.length) {
-      funnelRows.push([
-        "TEAM",
-        pair(sum((r) => r.calls), sum((r) => r.callsPrev)),
-        "-",
-        pair(sum((r) => r.created), sum((r) => r.createdPrev)),
-        pair(sum((r) => r.meetings), sum((r) => r.meetingsPrev)),
-        pair(sum((r) => r.converted), sum((r) => r.convertedPrev)),
-        pair(sum((r) => r.disengaged), sum((r) => r.disengagedPrev)),
-      ]);
-    }
+    // Every figure gets its own column under its own month heading. One block
+    // per rep: with four reps that is still one page, and it removes the
+    // "which number is which" problem entirely.
+    const delta = (n: number) => n > 0 ? `+${n}` : String(n);
+    const deltaSecs = (a: number | null, b: number | null) =>
+      (a == null || b == null) ? "-" : delta(Math.round((a - b) / 1000)) + "s";
+
+    const metricRows = (r: RepRow) => [
+      ["Connected calls", String(r.calls), String(r.callsPrev), delta(r.calls - r.callsPrev)],
+      ["Median call length", secs(r.dur), secs(r.durPrev), deltaSecs(r.dur, r.durPrev)],
+      ["Deals created", String(r.created), String(r.createdPrev), delta(r.created - r.createdPrev)],
+      ["Meetings booked", String(r.meetings), String(r.meetingsPrev), delta(r.meetings - r.meetingsPrev)],
+      ["Converted", String(r.converted), String(r.convertedPrev), delta(r.converted - r.convertedPrev)],
+      ["Disengaged", String(r.disengaged), String(r.disengagedPrev), delta(r.disengaged - r.disengagedPrev)],
+    ];
+    const metricCols = [
+      { t: "", w: 170 }, { t: cur.label, w: 115 }, { t: prev.label, w: 115 }, { t: "Change", w: 115 },
+    ];
+
+    const teamRow = {
+      name: "TEAM TOTAL",
+      calls: sum((r) => r.calls), callsPrev: sum((r) => r.callsPrev),
+      dur: null, durPrev: null,
+      created: sum((r) => r.created), createdPrev: sum((r) => r.createdPrev),
+      meetings: sum((r) => r.meetings), meetingsPrev: sum((r) => r.meetingsPrev),
+      converted: sum((r) => r.converted), convertedPrev: sum((r) => r.convertedPrev),
+      disengaged: sum((r) => r.disengaged), disengagedPrev: sum((r) => r.disengagedPrev),
+      cohort: 0, cohortMeeting: 0, cohortConverted: 0, cohortDiseng: 0,
+    };
+
+    // "12 (36%)" - the count first, because the count is the thing that
+    // happened and the percentage is a way of reading it.
+    const nPct = (n: number, of: number) => of ? `${n}  (${Math.round((n / of) * 100)}%)` : "0  (-)";
 
     const ratioRows = rows.map((r) => [
       r.name,
       String(r.cohort),
-      pct(r.cohortMeeting, r.cohort),
-      pct(r.cohortConverted, r.cohort),
-      pct(r.cohortDiseng, r.cohort),
-      r.calls ? (r.created / r.calls).toFixed(2) : "-",
+      nPct(r.cohortMeeting, r.cohort),
+      nPct(r.cohortConverted, r.cohort),
+      nPct(r.cohortDiseng, r.cohort),
     ]);
     if (rows.length) {
+      const cN = sum((r) => r.cohort);
       ratioRows.push([
         "TEAM",
-        String(sum((r) => r.cohort)),
-        pct(sum((r) => r.cohortMeeting), sum((r) => r.cohort)),
-        pct(sum((r) => r.cohortConverted), sum((r) => r.cohort)),
-        pct(sum((r) => r.cohortDiseng), sum((r) => r.cohort)),
-        sum((r) => r.calls) ? (sum((r) => r.created) / sum((r) => r.calls)).toFixed(2) : "-",
+        String(cN),
+        nPct(sum((r) => r.cohortMeeting), cN),
+        nPct(sum((r) => r.cohortConverted), cN),
+        nPct(sum((r) => r.cohortDiseng), cN),
       ]);
     }
 
     const sections: Section[] = [
       {
-        title: `Activity — ${cur.label}`,
-        note: `HOW TO READ THIS TABLE: every cell shows ${cur.label} first, then ${prev.label} in brackets. So "49 (63)" means 49 in ${cur.short} against 63 in ${prev.short}. Each column counts what happened during the period: calls connected, deals created, deals that reached Quote sent (the lawyer meeting), deals converted, deals disengaged. A deal shared between two reps counts for both.`,
-        cols: [
-          { t: "Sales rep", w: 105 }, { t: "Conn. calls", w: 72 }, { t: "Median call", w: 76 },
-          { t: "Created", w: 62 }, { t: "Meetings", w: 66 }, { t: "Converted", w: 68 },
-          { t: "Diseng.", w: 66 },
+        title: `Activity — ${cur.label} against ${prev.label}`,
+        note: "Each rep below has their own block. Every number sits under the month it belongs to, so nothing has to be worked out from brackets. What each row counts:",
+        cols: [], rows: [],
+        lines: [
+          "Connected calls    — calls whose outcome was recorded as Connected.",
+          "Median call length — the middle length of those connected calls.",
+          "Deals created      — deals created during the period.",
+          "Meetings booked    — deals that reached Quote sent, where the lawyer meeting happens.",
+          "Converted          — deals that reached the Converted stage during the period.",
+          "Disengaged         — deals that reached the Disengaged stage during the period.",
+          "",
+          "A deal shared between two reps is counted for both.",
         ],
-        rows: funnelRows,
       },
+      ...rows.map((r) => ({ title: r.name, cols: metricCols, rows: metricRows(r) })),
+      { title: "Team total", cols: metricCols, rows: metricRows(teamRow as RepRow) },
       {
         title: `What became of the deals created in ${cur.label}`,
-        note: `A conversion rate has to follow the SAME deals, so this table takes only the deals created in ${cur.label} and asks how far they have got since. That is why these percentages can never exceed 100%. It is deliberately NOT one column of the table above divided by another: most deals converting in ${cur.short} were created months earlier, so that division would compare two different sets of deals. The last column is deals created per connected call.`,
+        note: `This follows ONLY the deals created in ${cur.label} and asks how far they have got since — the same deals all the way across, which is why nothing here can exceed 100%. Each cell shows the number of deals first, then what share of that rep's created deals it is. It is deliberately not one column of the blocks above divided by another: most deals converting in ${cur.short} were created months earlier, so that would compare two different sets of deals.`,
         cols: [
-          { t: "Sales rep", w: 118 }, { t: "Deals created", w: 78 }, { t: "Reached meeting", w: 96 },
-          { t: "Converted", w: 78 }, { t: "Disengaged", w: 78 }, { t: "Deals per call", w: 67 },
+          { t: "Sales rep", w: 140 }, { t: "Deals created", w: 85 },
+          { t: "Reached meeting", w: 100 }, { t: "Converted", w: 95 }, { t: "Disengaged", w: 95 },
         ],
         rows: ratioRows,
       },
@@ -481,14 +504,14 @@ Deno.serve(async (req) => {
     const html = `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#ffffff">
   <div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.65;color:#101418;padding:22px 24px">
     <p style="margin:0 0 14px">Dear all,</p>
-    <p style="margin:0 0 14px">Sales rep performance for <b>${cur.label}</b>. Each figure shows ${cur.label}, with ${prev.label} in brackets for comparison.</p>
+    <p style="margin:0 0 14px">Sales rep performance for <b>${cur.label}</b>. The figures below are ${cur.label} only — the attached PDF sets each of them beside ${prev.label} in its own column.</p>
     <table style="border-collapse:collapse;margin:14px 0">
-      <tr><th style="${th}">Sales rep</th><th style="${th}">Connected calls</th><th style="${th}">Deals created</th><th style="${th}">Meetings</th><th style="${th}">Converted</th></tr>
+      <tr><th style="${th}">Sales rep</th><th style="${th}">Connected calls</th><th style="${th}">Deals created</th><th style="${th}">Meetings booked</th><th style="${th}">Converted</th></tr>
       ${rows.map((r) =>
-        `<tr><td style="${td}">${r.name}</td><td style="${td};text-align:center">${r.calls} (${r.callsPrev})</td><td style="${td};text-align:center">${r.created} (${r.createdPrev})</td><td style="${td};text-align:center">${r.meetings} (${r.meetingsPrev})</td><td style="${td};text-align:center">${r.converted} (${r.convertedPrev})</td></tr>`
+        `<tr><td style="${td}">${r.name}</td><td style="${td};text-align:center">${r.calls}</td><td style="${td};text-align:center">${r.created}</td><td style="${td};text-align:center">${r.meetings}</td><td style="${td};text-align:center">${r.converted}</td></tr>`
       ).join("")}
     </table>
-    <p style="margin:0 0 24px">The attached PDF adds median call duration, disengaged deals, and what has since become of the deals created in ${cur.label}.</p>
+    <p style="margin:0 0 24px">The attached PDF gives each rep their own block with ${cur.label} and ${prev.label} side by side, plus median call length, disengaged deals, and what has since become of the deals created in ${cur.label}.</p>
     ${settings.email_signature || ""}
   </div>
 </body></html>`;
