@@ -331,13 +331,6 @@ function renderNav(){
       nav.appendChild(ds);
       /* Staff surveys. Sales only for now — add the department here when
          another team needs one; nothing else is department-specific. */
-      if(PERF_DEPTS.includes(d)){
-        const pk=PERFKEY+d;
-        const ps=document.createElement('button');ps.type='button';
-        ps.className='sub'+(pk===curReport?' sel':'');ps.textContent='Rep performance';
-        ps.onclick=()=>{curReport=(curReport===pk?null:pk);renderNav();renderMain();};
-        nav.appendChild(ps);
-      }
       if(SURVEY_DEPTS.includes(d)){
         const sk=SURVEYKEY+d;
         const ss=document.createElement('button');ss.type='button';
@@ -372,14 +365,6 @@ function renderMain(){
     $('deptView').classList.remove('hidden');
     $('crumb').innerHTML=`${esc(dept)} / <b>${esc(docLabelFor(dept))}</b>`;
     loadDocumentsPage(dept);
-    return;
-  }
-  if(curReport&&curReport.indexOf(PERFKEY)===0){
-    const dept=curReport.slice(PERFKEY.length);
-    $('reportView').classList.add('hidden');
-    $('deptView').classList.remove('hidden');
-    $('crumb').innerHTML=`${esc(dept)} / <b>Rep performance</b>`;
-    loadPerfPage(dept);
     return;
   }
   if(curReport&&curReport.indexOf(SURVEYKEY)===0){
@@ -796,14 +781,16 @@ const safeDocName=n=>String(n).replace(/[^A-Za-z0-9 ._()\-]+/g,'-').replace(/-{2
 function loadDocumentsPage(dept){
   curDocDept=docFolderFor(dept);
   $('deptView').innerHTML=
+    (PERF_DEPTS.includes(dept)?perfPanelHtml(dept):'')+
     '<div class="panel">'+
-    '<div class="sechead">'+esc(dept)+' &mdash; documents</div>'+
+    '<div class="sechead">'+esc(dept)+' &mdash; '+esc(docLabelFor(dept).toLowerCase())+' on file</div>'+
     '<p class="note2">Reports and records kept against this department. Files are stored privately &mdash; they are never published on the portal &mdash; and every download link expires after one hour.</p>'+
     '<div class="row" style="align-items:center"><input type="file" id="docFile" style="max-width:340px">'+
     '<button class="btn" id="docUpload">Upload</button></div>'+
     '<div class="msg" id="docMsg"></div>'+
     '<div class="tablewrap" id="docTable"><p style="font-size:13px;color:#666">Loading&hellip;</p></div>'+
     '</div>';
+  wirePerfPanel();
   $('docUpload').onclick=doDocUpload;
   loadDocList();
 }
@@ -860,7 +847,6 @@ function doDocUpload(){
    The period is a parameter rather than three separate reports, because the
    only reason the HubSpot dashboard repeats each metric per period is that a
    dashboard card cannot take one. */
-const PERFKEY='perf::';
 const PERF_DEPTS=['Sales'];
 
 const PERF_PERIODS=[
@@ -869,9 +855,9 @@ const PERF_PERIODS=[
   {k:'year',       l:'This year so far',  d:'compared with last year'},
 ];
 
-function loadPerfPage(dept){
-  $('deptView').innerHTML=`<div class="panel">
-    <div class="sechead">${esc(dept)} — rep performance</div>
+function perfPanelHtml(dept){
+  return `<div class="panel">
+    <div class="sechead">Rep performance</div>
     <p class="note2">Each rep's funnel for a period, with the previous period beside every figure, as a PDF you can keep and share. The same numbers are live in HubSpot; what this adds is the conversion rate between the stages.</p>
     <p class="note2"><b>Connected calls</b> and <b>median call duration</b> use the same definitions as your HubSpot dashboard — both were checked against it figure for figure. <b>Meetings</b> means deals that reached Quote sent.</p>
     <div class="row" id="perfBtns">
@@ -880,7 +866,10 @@ function loadPerfPage(dept){
     <p class="note2" id="perfHint">${PERF_PERIODS.map(p=>`<b>${esc(p.l)}</b> — ${esc(p.d)}`).join('<br>')}</p>
     <div class="msg" id="perfMsg"></div>
   </div>`;
-  $('perfBtns').querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>perfSend(b.dataset.p));
+}
+function wirePerfPanel(){
+  const b=$('perfBtns');
+  if(b)b.querySelectorAll('[data-p]').forEach(x=>x.onclick=()=>perfSend(x.dataset.p));
 }
 
 async function perfSend(period){

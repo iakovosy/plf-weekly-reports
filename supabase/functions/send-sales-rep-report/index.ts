@@ -38,6 +38,11 @@
 // Any name that appears on one side but not the other is listed in the PDF
 // rather than dropped, so a mismatch is visible instead of silently halving
 // somebody's funnel.
+//
+// PACING: this report makes far more HubSpot search calls than the weekly ones
+// (one per rep per period for calls, plus four per period for deals), which is
+// enough to trip HubSpot's per-second search cap. The pacing and 429 retry live
+// in _shared/hubspot.ts so every report gets them, not just this one.
 import { cyprusNow, prettyDate } from "../_shared/time.ts";
 import { getSettings, splitRecipients } from "../_shared/settings.ts";
 import { sendEmail } from "../_shared/email.ts";
@@ -293,6 +298,8 @@ Deno.serve(async (req) => {
     stage = "owners";
     const { names: ownerNames } = await fetchOwners(token);
 
+    // Sequential, not Promise.all: the pacer would serialise these anyway, and
+    // running them in order keeps the `stage` label meaningful if one fails.
     stage = "deals";
     const dealsFor = async (r: Range) => ({
       created: await dealsEntering(token, pipeline, "createdate", r),
@@ -300,7 +307,8 @@ Deno.serve(async (req) => {
       converted: await dealsEntering(token, pipeline, `hs_v2_date_entered_${convStage}`, r),
       disengaged: await dealsEntering(token, pipeline, "hs_v2_date_entered_closedlost", r),
     });
-    const [dCur, dPrev] = await Promise.all([dealsFor(cur), dealsFor(prev)]);
+    const dCur = await dealsFor(cur);
+    const dPrev = await dealsFor(prev);
 
     const t = {
       created: tally(dCur.created), createdPrev: tally(dPrev.created),
@@ -309,9 +317,8 @@ Deno.serve(async (req) => {
       disengaged: tally(dCur.disengaged), disengagedPrev: tally(dPrev.disengaged),
     };
 
-    // Everyone who appears anywhere in the deal data, plus every active owner
-    // who made a connected call. A rep with calls but no deals still belongs in
-    // the table - that gap is exactly what the report is for.
+    // Everyone who appears anywhere in the deal data. A rep with calls but no
+    // deals still belongs in the table - that gap is what the report is for.
     const repNames = new Set<string>();
     for (const m of Object.values(t)) for (const k of m.keys()) repNames.add(k);
     const ownerByName = new Map<string, string>();
@@ -323,9 +330,8 @@ Deno.serve(async (req) => {
     for (const name of [...repNames].sort()) {
       const oid = ownerByName.get(norm(name));
       if (!oid) unmatched.push(name);
-      const [c, cp] = oid
-        ? await Promise.all([callsFor(token, oid, cur), callsFor(token, oid, prev)])
-        : [{ count: 0, median: null }, { count: 0, median: null }];
+      const c = oid ? await callsFor(token, oid, cur) : { count: 0, median: null };
+      const cp = oid ? await callsFor(token, oid, prev) : { count: 0, median: null };
       rows.push({
         name,
         calls: c.count, callsPrev: cp.count,
