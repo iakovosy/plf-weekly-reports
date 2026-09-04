@@ -850,20 +850,20 @@ function doDocUpload(){
 const PERF_DEPTS=['Sales'];
 
 const PERF_PERIODS=[
-  {k:'this-month', l:'This month so far', d:'compared with the whole of last month'},
-  {k:'last-month', l:'Last month',        d:'compared with the month before it'},
-  {k:'year',       l:'This year so far',  d:'compared with last year'},
+  {k:'this-month', l:'This month so far'},
+  {k:'last-month', l:'Last month'},
+  {k:'year',       l:'This year so far'},
 ];
 
 function perfPanelHtml(dept){
   return `<div class="panel">
     <div class="sechead">Rep performance</div>
-    <p class="note2">Each rep's funnel for a period, with the previous period beside every figure, as a PDF you can keep and share. The same numbers are live in HubSpot; what this adds is the conversion rate between the stages.</p>
-    <p class="note2"><b>Connected calls</b> and <b>median call duration</b> use the same definitions as your HubSpot dashboard — both were checked against it figure for figure. <b>Meetings</b> means deals that reached Quote sent.</p>
+    <p class="note2">Each rep's funnel for one month, as a PDF you can keep and share. The same counts are live in HubSpot; what this adds is what became of the meetings scheduled that month — how many reached Quote sent, how many converted.</p>
+    <p class="note2"><b>Connected calls</b> and <b>median call length</b> use the same definitions as your HubSpot dashboard — both were checked against it figure for figure. <b>Meetings scheduled</b> is deals created: a deal is created at the Meeting Scheduled stage when a rep books a meeting, so the two are one event. <b>Quote sent</b> is the later stage, counted separately.</p>
     <div class="row" id="perfBtns">
       ${PERF_PERIODS.map(p=>`<button class="btn" data-p="${att(p.k)}">${esc(p.l)}</button>`).join('')}
     </div>
-    <p class="note2" id="perfHint">${PERF_PERIODS.map(p=>`<b>${esc(p.l)}</b> — ${esc(p.d)}`).join('<br>')}</p>
+    <p class="note2" id="perfHint">Takes up to a minute — the report paces its HubSpot queries to stay under the rate limit.</p>
     <div class="msg" id="perfMsg"></div>
   </div>`;
 }
@@ -883,7 +883,7 @@ async function perfSend(period){
     const j=await r.json();
     if(!r.ok||j.error){M.textContent=j.error||'Could not build the report.';M.classList.add('bad');return;}
     if(j.skipped){M.textContent='Skipped: '+j.reason;M.classList.add('bad');return;}
-    M.textContent=`Sent to ${to.trim()} — ${j.current} against ${j.previous}, ${j.reps} rep${j.reps===1?'':'s'}.`+
+    M.textContent=`Sent to ${to.trim()} — ${j.current}, ${j.reps.length} rep${j.reps.length===1?'':'s'}.`+
       (j.unmatched&&j.unmatched.length?` Note: ${j.unmatched.join(', ')} had no matching HubSpot user, so their call figures read zero.`:'');
     if(j.unmatched&&j.unmatched.length)M.classList.add('bad');
   }catch(e){M.textContent='Could not build the report.';M.classList.add('bad');}

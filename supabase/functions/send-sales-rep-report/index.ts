@@ -31,31 +31,37 @@
 //                     have a duration recorded. Calls with no duration are
 //                     excluded, not counted as zero - verified at 95s for the
 //                     same rep/month, matching the dashboard.
-//   Created           deals created during the period.
-//   Meetings          deals that ENTERED the Quote sent stage during the
-//                     period. Quote sent is where the lawyer meeting happens.
-//   Converted/Diseng. deals entering the Converted / Disengaged stage during
-//                     the period.
+//   Meetings scheduled
+//                     deals CREATED during the period. In this firm a deal is
+//                     created at the moment a meeting is booked with the lead -
+//                     the first stage of the pipeline is literally "Meeting
+//                     Scheduled" - so the meeting and the deal are one event.
+//                     An earlier version labelled the Quote sent count
+//                     "Meetings booked", which made the two look like they
+//                     disagreed when they were simply different milestones.
+//   Quote sent        deals that entered the Quote sent stage during the
+//                     period. A later milestone, kept under its own name.
+//   Converted         deals entering the Converted stage during the period.
 //
 // THE ORDER OF THE FUNNEL MATTERS, AND WAS WRONG ONCE
-// A deal is CREATED first and reaches Quote sent later. An earlier version put
-// meetings before created and divided one by the other, printing "229%" and
-// "443%" conversion rates - nonsense, and a reminder that a ratio between two
-// stages means nothing unless the stages are in the right order.
+// A deal is created at Meeting Scheduled and reaches Quote sent later. An
+// earlier version had those two the wrong way round and divided one by the
+// other, printing "229%" and "443%" conversion rates - nonsense, and a reminder
+// that a ratio between two stages means nothing unless the stages are in order.
 //
-// ONE NUMBER PER CELL
-// The first version put both periods in one cell as "49 (63)". Nobody could
-// tell which was which - "49 is connected calls? or is 63?" - so each period
-// now has its own labelled column under its own month name, one block per rep.
-// A legend beside the numbers is not the same as a label on them.
+// ONE PERIOD, ONE NUMBER PER CELL
+// An earlier version showed the chosen period and the one before it in the same
+// cell as "49 (63)", and nobody could tell which was which. Splitting them into
+// columns fixed the ambiguity but not the clutter, so the report now shows the
+// chosen period ONLY. Half the HubSpot searches disappeared with it.
 //
 // THE RATIOS ARE COHORT-BASED, NOT PERIOD-BASED
 // Dividing "converted this month" by "created this month" compares two
 // different sets of deals: most deals converting in August were created in June
 // or July. That is not a conversion rate. So the second table follows a single
-// COHORT instead - of the deals CREATED in the period, how many have since
-// reached each stage. Those figures cannot exceed 100%, and they answer the
-// question a conversion rate is supposed to answer.
+// COHORT instead - of the meetings scheduled in the period, how many have
+// since reached Quote sent or Converted. Those figures cannot exceed 100%, and
+// they answer the question a conversion rate is supposed to answer.
 //
 // Calls are attributed by HubSpot OWNER; deals by the sales_rep property.
 // They are joined on the person's name, which is the only link that exists.
@@ -148,14 +154,13 @@ const secs = (ms: number | null) => ms == null ? "-" : `${Math.round(ms / 1000)}
 
 type RepRow = {
   name: string;
-  calls: number; callsPrev: number;
-  dur: number | null; durPrev: number | null;
-  created: number; createdPrev: number;
-  meetings: number; meetingsPrev: number;
-  converted: number; convertedPrev: number;
-  disengaged: number; disengagedPrev: number;
-  // cohort: of the deals CREATED this period, how many have since reached...
-  cohort: number; cohortMeeting: number; cohortConverted: number; cohortDiseng: number;
+  calls: number;
+  dur: number | null;
+  scheduled: number;   // deals created = meetings scheduled; see header note
+  quote: number;       // reached Quote sent during the period
+  converted: number;
+  // cohort: of the meetings scheduled this period, how far they have got since
+  cohort: number; cohortQuote: number; cohortConverted: number;
 };
 
 async function callsFor(token: string, ownerId: string, r: Range) {
@@ -290,7 +295,7 @@ Deno.serve(async (req) => {
     runDate = now.date;
     const period = ["this-month", "last-month", "year"].includes(String(body.period))
       ? String(body.period) : "last-month";
-    const { cur, prev } = periodsFor(period, now);
+    const { cur } = periodsFor(period, now);
 
     stage = "hubspot token";
     const token = settings.hubspot_token;
@@ -316,7 +321,6 @@ Deno.serve(async (req) => {
     }
     const QUOTE = quoteSentId ? `hs_v2_date_entered_${quoteSentId}` : "";
     const CONV = `hs_v2_date_entered_${convStage}`;
-    const LOST = "hs_v2_date_entered_closedlost";
 
     stage = "owners";
     const { names: ownerNames } = await fetchOwners(token);
@@ -338,36 +342,33 @@ Deno.serve(async (req) => {
     };
 
     stage = "deals";
-    const cohortProps = [QUOTE, CONV, LOST].filter(Boolean);
-    const createdCur = await dealsEntering(token, pipeline, "createdate", cur, cohortProps);
-    const createdPrv = await dealsEntering(token, pipeline, "createdate", prev);
-    const meetCur = QUOTE ? await dealsEntering(token, pipeline, QUOTE, cur) : [];
-    const meetPrv = QUOTE ? await dealsEntering(token, pipeline, QUOTE, prev) : [];
+    // Only the chosen period. Dropping the previous-period fetches roughly
+    // halves the HubSpot searches this report makes, and nothing shows a
+    // comparison any more, so fetching them would be work nobody sees.
+    const createdCur = await dealsEntering(
+      token, pipeline, "createdate", cur, [QUOTE, CONV].filter(Boolean),
+    );
+    const quoteCur = QUOTE ? await dealsEntering(token, pipeline, QUOTE, cur) : [];
     const convCur = await dealsEntering(token, pipeline, CONV, cur);
-    const convPrv = await dealsEntering(token, pipeline, CONV, prev);
-    const lostCur = await dealsEntering(token, pipeline, LOST, cur);
-    const lostPrv = await dealsEntering(token, pipeline, LOST, prev);
 
     const t = {
-      created: tally(createdCur), createdPrev: tally(createdPrv),
-      meetings: tally(meetCur), meetingsPrev: tally(meetPrv),
-      converted: tally(convCur), convertedPrev: tally(convPrv),
-      disengaged: tally(lostCur), disengagedPrev: tally(lostPrv),
+      scheduled: tally(createdCur),
+      quote: tally(quoteCur),
+      converted: tally(convCur),
     };
 
-    // Cohort: follow the deals CREATED this period and see how far they got.
-    // The same set of deals throughout, so these ratios cannot exceed 100%.
+    // Cohort: follow the meetings scheduled in this period and see how far they
+    // got. The same deals all the way across, so nothing can exceed 100%.
     const has = (d: any, p: string) => !!p && String(d.properties?.[p] ?? "").trim() !== "";
-    const coh = new Map<string, { n: number; meeting: number; conv: number; lost: number }>();
+    const coh = new Map<string, { n: number; quote: number; conv: number }>();
     for (const d of createdCur) {
       for (const r of repsOn(d)) {
         const key = norm(r);
         if (!roster.has(key)) continue;
-        const c = coh.get(key) || { n: 0, meeting: 0, conv: 0, lost: 0 };
+        const c = coh.get(key) || { n: 0, quote: 0, conv: 0 };
         c.n++;
-        if (has(d, QUOTE)) c.meeting++;
+        if (has(d, QUOTE)) c.quote++;
         if (has(d, CONV)) c.conv++;
-        if (has(d, LOST)) c.lost++;
         coh.set(key, c);
       }
     }
@@ -379,102 +380,86 @@ Deno.serve(async (req) => {
       const oid = ownerByName.get(key);
       if (!oid) unmatched.push(display);
       const c = oid ? await callsFor(token, oid, cur) : { count: 0, median: null };
-      const cp = oid ? await callsFor(token, oid, prev) : { count: 0, median: null };
-      const k = coh.get(key) || { n: 0, meeting: 0, conv: 0, lost: 0 };
+      const k = coh.get(key) || { n: 0, quote: 0, conv: 0 };
       rows.push({
         name: display,
-        calls: c.count, callsPrev: cp.count,
-        dur: c.median, durPrev: cp.median,
-        created: t.created.get(key) || 0, createdPrev: t.createdPrev.get(key) || 0,
-        meetings: t.meetings.get(key) || 0, meetingsPrev: t.meetingsPrev.get(key) || 0,
-        converted: t.converted.get(key) || 0, convertedPrev: t.convertedPrev.get(key) || 0,
-        disengaged: t.disengaged.get(key) || 0, disengagedPrev: t.disengagedPrev.get(key) || 0,
-        cohort: k.n, cohortMeeting: k.meeting, cohortConverted: k.conv, cohortDiseng: k.lost,
+        calls: c.count,
+        dur: c.median,
+        scheduled: t.scheduled.get(key) || 0,
+        quote: t.quote.get(key) || 0,
+        converted: t.converted.get(key) || 0,
+        cohort: k.n, cohortQuote: k.quote, cohortConverted: k.conv,
       });
     }
-    rows.sort((a, b) => b.converted - a.converted || b.created - a.created || a.name.localeCompare(b.name));
+    rows.sort((a, b) =>
+      b.converted - a.converted || b.scheduled - a.scheduled || a.name.localeCompare(b.name));
 
     stage = "build pdf";
     const sum = (f: (r: RepRow) => number) => rows.reduce((s, r) => s + f(r), 0);
 
-    // Every figure gets its own column under its own month heading. One block
-    // per rep: with four reps that is still one page, and it removes the
-    // "which number is which" problem entirely.
-    const delta = (n: number) => n > 0 ? `+${n}` : String(n);
-    const deltaSecs = (a: number | null, b: number | null) =>
-      (a == null || b == null) ? "-" : delta(Math.round((a - b) / 1000)) + "s";
+    // One row per rep again. The per-rep blocks existed only to keep two
+    // periods apart; with a single period every cell holds one number, so a
+    // single table is both unambiguous and comparable across reps.
+    const nPct = (n: number, of: number) =>
+      of ? `${n}  (${Math.round((n / of) * 100)}%)` : "0  (-)";
 
-    const metricRows = (r: RepRow) => [
-      ["Connected calls", String(r.calls), String(r.callsPrev), delta(r.calls - r.callsPrev)],
-      ["Median call length", secs(r.dur), secs(r.durPrev), deltaSecs(r.dur, r.durPrev)],
-      ["Deals created", String(r.created), String(r.createdPrev), delta(r.created - r.createdPrev)],
-      ["Meetings booked", String(r.meetings), String(r.meetingsPrev), delta(r.meetings - r.meetingsPrev)],
-      ["Converted", String(r.converted), String(r.convertedPrev), delta(r.converted - r.convertedPrev)],
-      ["Disengaged", String(r.disengaged), String(r.disengagedPrev), delta(r.disengaged - r.disengagedPrev)],
-    ];
-    const metricCols = [
-      { t: "", w: 170 }, { t: cur.label, w: 115 }, { t: prev.label, w: 115 }, { t: "Change", w: 115 },
-    ];
+    const mainRows = rows.map((r) => [
+      r.name, String(r.calls), secs(r.dur),
+      String(r.scheduled), String(r.quote), String(r.converted),
+    ]);
+    if (rows.length) {
+      mainRows.push([
+        "TEAM", String(sum((r) => r.calls)), "-",
+        String(sum((r) => r.scheduled)), String(sum((r) => r.quote)),
+        String(sum((r) => r.converted)),
+      ]);
+    }
 
-    const teamRow = {
-      name: "TEAM TOTAL",
-      calls: sum((r) => r.calls), callsPrev: sum((r) => r.callsPrev),
-      dur: null, durPrev: null,
-      created: sum((r) => r.created), createdPrev: sum((r) => r.createdPrev),
-      meetings: sum((r) => r.meetings), meetingsPrev: sum((r) => r.meetingsPrev),
-      converted: sum((r) => r.converted), convertedPrev: sum((r) => r.convertedPrev),
-      disengaged: sum((r) => r.disengaged), disengagedPrev: sum((r) => r.disengagedPrev),
-      cohort: 0, cohortMeeting: 0, cohortConverted: 0, cohortDiseng: 0,
-    };
-
-    // "12 (36%)" - the count first, because the count is the thing that
-    // happened and the percentage is a way of reading it.
-    const nPct = (n: number, of: number) => of ? `${n}  (${Math.round((n / of) * 100)}%)` : "0  (-)";
-
-    const ratioRows = rows.map((r) => [
-      r.name,
-      String(r.cohort),
-      nPct(r.cohortMeeting, r.cohort),
-      nPct(r.cohortConverted, r.cohort),
-      nPct(r.cohortDiseng, r.cohort),
+    const cohortRows = rows.map((r) => [
+      r.name, String(r.cohort), nPct(r.cohortQuote, r.cohort), nPct(r.cohortConverted, r.cohort),
     ]);
     if (rows.length) {
       const cN = sum((r) => r.cohort);
-      ratioRows.push([
-        "TEAM",
-        String(cN),
-        nPct(sum((r) => r.cohortMeeting), cN),
-        nPct(sum((r) => r.cohortConverted), cN),
-        nPct(sum((r) => r.cohortDiseng), cN),
+      cohortRows.push([
+        "TEAM", String(cN),
+        nPct(sum((r) => r.cohortQuote), cN), nPct(sum((r) => r.cohortConverted), cN),
       ]);
     }
 
     const sections: Section[] = [
       {
-        title: `Activity — ${cur.label} against ${prev.label}`,
-        note: "Each rep below has their own block. Every number sits under the month it belongs to, so nothing has to be worked out from brackets. What each row counts:",
+        title: `Activity — ${cur.label}`,
+        note: `Every figure below is ${cur.label}. What each column counts:`,
         cols: [], rows: [],
         lines: [
-          "Connected calls    — calls whose outcome was recorded as Connected.",
-          "Median call length — the middle length of those connected calls.",
-          "Deals created      — deals created during the period.",
-          "Meetings booked    — deals that reached Quote sent, where the lawyer meeting happens.",
-          "Converted          — deals that reached the Converted stage during the period.",
-          "Disengaged         — deals that reached the Disengaged stage during the period.",
+          "Connected calls     - calls whose outcome was recorded as Connected.",
+          "Median call         - the middle length of those connected calls.",
+          "Meetings scheduled  - a deal is created when a meeting is booked with the lead,",
+          "                      at the Meeting Scheduled stage. The meeting and the deal",
+          "                      are the same event, counted once.",
+          "Quote sent          - deals that reached the Quote sent stage during the period.",
+          "                      A later milestone than the meeting, not the same thing.",
+          "Converted           - deals that reached the Converted stage during the period.",
           "",
           "A deal shared between two reps is counted for both.",
         ],
       },
-      ...rows.map((r) => ({ title: r.name, cols: metricCols, rows: metricRows(r) })),
-      { title: "Team total", cols: metricCols, rows: metricRows(teamRow as RepRow) },
       {
-        title: `What became of the deals created in ${cur.label}`,
-        note: `This follows ONLY the deals created in ${cur.label} and asks how far they have got since — the same deals all the way across, which is why nothing here can exceed 100%. Each cell shows the number of deals first, then what share of that rep's created deals it is. It is deliberately not one column of the blocks above divided by another: most deals converting in ${cur.short} were created months earlier, so that would compare two different sets of deals.`,
+        title: `By sales rep — ${cur.label}`,
         cols: [
-          { t: "Sales rep", w: 140 }, { t: "Deals created", w: 85 },
-          { t: "Reached meeting", w: 100 }, { t: "Converted", w: 95 }, { t: "Disengaged", w: 95 },
+          { t: "Sales rep", w: 110 }, { t: "Conn. calls", w: 75 }, { t: "Median call", w: 75 },
+          { t: "Meetings scheduled", w: 105 }, { t: "Quote sent", w: 75 }, { t: "Converted", w: 75 },
         ],
-        rows: ratioRows,
+        rows: mainRows,
+      },
+      {
+        title: `What became of the meetings scheduled in ${cur.label}`,
+        note: `This follows ONLY the meetings scheduled in ${cur.label} and asks how far they have got since - the same deals all the way across, which is why nothing here can exceed 100%. Each cell gives the number of deals first, then what share of that rep's scheduled meetings it is.`,
+        cols: [
+          { t: "Sales rep", w: 150 }, { t: "Meetings scheduled", w: 120 },
+          { t: "Reached quote sent", w: 125 }, { t: "Converted", w: 120 },
+        ],
+        rows: cohortRows,
       },
     ];
 
@@ -504,14 +489,14 @@ Deno.serve(async (req) => {
     const html = `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#ffffff">
   <div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.65;color:#101418;padding:22px 24px">
     <p style="margin:0 0 14px">Dear all,</p>
-    <p style="margin:0 0 14px">Sales rep performance for <b>${cur.label}</b>. The figures below are ${cur.label} only — the attached PDF sets each of them beside ${prev.label} in its own column.</p>
+    <p style="margin:0 0 14px">Sales rep performance for <b>${cur.label}</b>.</p>
     <table style="border-collapse:collapse;margin:14px 0">
-      <tr><th style="${th}">Sales rep</th><th style="${th}">Connected calls</th><th style="${th}">Deals created</th><th style="${th}">Meetings booked</th><th style="${th}">Converted</th></tr>
+      <tr><th style="${th}">Sales rep</th><th style="${th}">Connected calls</th><th style="${th}">Meetings scheduled</th><th style="${th}">Quote sent</th><th style="${th}">Converted</th></tr>
       ${rows.map((r) =>
-        `<tr><td style="${td}">${r.name}</td><td style="${td};text-align:center">${r.calls}</td><td style="${td};text-align:center">${r.created}</td><td style="${td};text-align:center">${r.meetings}</td><td style="${td};text-align:center">${r.converted}</td></tr>`
+        `<tr><td style="${td}">${r.name}</td><td style="${td};text-align:center">${r.calls}</td><td style="${td};text-align:center">${r.scheduled}</td><td style="${td};text-align:center">${r.quote}</td><td style="${td};text-align:center">${r.converted}</td></tr>`
       ).join("")}
     </table>
-    <p style="margin:0 0 24px">The attached PDF gives each rep their own block with ${cur.label} and ${prev.label} side by side, plus median call length, disengaged deals, and what has since become of the deals created in ${cur.label}.</p>
+    <p style="margin:0 0 24px">The attached PDF adds median call length and what has since become of the meetings scheduled in ${cur.label}.</p>
     ${settings.email_signature || ""}
   </div>
 </body></html>`;
@@ -524,7 +509,6 @@ Deno.serve(async (req) => {
       ok: r.ok,
       period,
       current: cur.label,
-      previous: prev.label,
       reps: rows.map((x) => x.name),
       unmatched,
       to,
