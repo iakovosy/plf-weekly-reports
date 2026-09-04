@@ -2,47 +2,62 @@
 // rep's funnel for a chosen period, with the previous period beside it.
 //
 // WHY ONE REPORT RATHER THAN ONE PER METRIC
-// These numbers are a funnel - connected calls -> meetings -> deals created ->
+// These numbers are a funnel - connected calls -> deals created -> meetings ->
 // converted. The counts are already visible live in HubSpot; what a document
 // adds is the RATIOS BETWEEN the stages, and those cannot be computed if the
 // stages live in separate reports. So one report, one row per rep.
 //
-// WHY THE PERIOD IS A PARAMETER
-// The HubSpot dashboard carries the same metric twice, once per period, because
-// a dashboard card cannot take a parameter. A generated document can, so this
-// takes period=this-month|last-month|year and always prints the previous
-// comparable period next to each figure.
+// WHO COUNTS AS A REP
+// The sales_rep picklist in HubSpot still holds everyone who ever sold, so it
+// cannot decide who belongs in a current league table. The portal already keeps
+// that roster - sales_admins, managed in the console - so the report takes the
+// list from there. A rep who leaves is removed in one place and disappears from
+// the next report; nothing here needs editing.
 //
-// METRIC DEFINITIONS - each was verified against the live HubSpot dashboard
-// before being written here, because a report that quietly disagrees with the
-// dashboard is worse than no report:
+// sales_rep IS MULTI-SELECT. A shared deal arrives as "Kristin Hofmann;Georgia
+// Markitsi", so the value is split on ";" and each named rep is credited. Both
+// get a full unit of credit - a shared deal would otherwise appear as its own
+// phantom rep, which is what happened before this was handled.
+//
+// METRIC DEFINITIONS - the call metrics were verified against the live HubSpot
+// dashboard before being coded, because a report that quietly disagrees with
+// the dashboard everyone reads is worse than no report:
 //
 //   Connected calls   calls whose OUTCOME (hs_call_disposition) is "Connected".
-//                     Note this is the call outcome, NOT hs_call_status: status
+//                     This is the call outcome, NOT hs_call_status: status
 //                     COMPLETED gave 321 for one rep in Aug 2026 where the
 //                     dashboard said 102. The disposition gives exactly 102.
 //   Median duration   median hs_call_duration across those connected calls that
 //                     have a duration recorded. Calls with no duration are
 //                     excluded, not counted as zero - verified at 95s for the
 //                     same rep/month, matching the dashboard.
-//   Meetings          deals that ENTERED the Quote sent stage during the period.
-//                     "Quote sent" is where the lawyer meeting happens; the
-//                     weekly deals report already uses this same definition.
-//   Created/Converted/Disengaged
-//                     deals created, or entering the Converted / Disengaged
-//                     stage, during the period, attributed by the sales_rep
-//                     property on the deal.
+//   Created           deals created during the period.
+//   Meetings          deals that ENTERED the Quote sent stage during the
+//                     period. Quote sent is where the lawyer meeting happens.
+//   Converted/Diseng. deals entering the Converted / Disengaged stage during
+//                     the period.
 //
-// Calls are attributed by HubSpot OWNER; deals by the sales_rep TEXT property.
+// THE ORDER OF THE FUNNEL MATTERS, AND WAS WRONG ONCE
+// A deal is CREATED first and reaches Quote sent later. An earlier version put
+// meetings before created and divided one by the other, printing "229%" and
+// "443%" conversion rates - nonsense, and a reminder that a ratio between two
+// stages means nothing unless the stages are in the right order.
+//
+// THE RATIOS ARE COHORT-BASED, NOT PERIOD-BASED
+// Dividing "converted this month" by "created this month" compares two
+// different sets of deals: most deals converting in August were created in June
+// or July. That is not a conversion rate. So the second table follows a single
+// COHORT instead - of the deals CREATED in the period, how many have since
+// reached each stage. Those figures cannot exceed 100%, and they answer the
+// question a conversion rate is supposed to answer.
+//
+// Calls are attributed by HubSpot OWNER; deals by the sales_rep property.
 // They are joined on the person's name, which is the only link that exists.
-// Any name that appears on one side but not the other is listed in the PDF
-// rather than dropped, so a mismatch is visible instead of silently halving
-// somebody's funnel.
 //
-// PACING: this report makes far more HubSpot search calls than the weekly ones
-// (one per rep per period for calls, plus four per period for deals), which is
-// enough to trip HubSpot's per-second search cap. The pacing and 429 retry live
-// in _shared/hubspot.ts so every report gets them, not just this one.
+// PACING: this report makes far more HubSpot search calls than the weekly ones,
+// which is enough to trip HubSpot's per-second search cap. The pacing and 429
+// retry live in _shared/hubspot.ts so every report gets them.
+import { supabase } from "../_shared/client.ts";
 import { cyprusNow, prettyDate } from "../_shared/time.ts";
 import { getSettings, splitRecipients } from "../_shared/settings.ts";
 import { sendEmail } from "../_shared/email.ts";
@@ -63,10 +78,6 @@ const W = 595, H = 842, M = 40;
 // HubSpot's built-in "Connected" call outcome.
 const CONNECTED = "f240bbac-87c9-4f6e-bf70-924b57d47db7";
 
-// sales_rep picklist values that are not people and must never appear in a
-// per-rep league table.
-const NOT_A_REP = ["existing client – no rep", "existing client - no rep", "wolf media digital"];
-
 const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "Content-Type",
@@ -76,43 +87,47 @@ const json = (o: unknown, s = 200) =>
   new Response(JSON.stringify(o), { status: s, headers: { "Content-Type": "application/json", ...CORS } });
 
 const norm = (s: string) => String(s || "").toLowerCase().replace(/\s+/g, " ").trim();
-const isRep = (name: string) => !!name && !NOT_A_REP.includes(norm(name));
 
-type Range = { start: number; end: number; label: string };
+// "Kristin Hofmann;Georgia Markitsi" -> both names.
+const repsOn = (d: any): string[] =>
+  String(d?.properties?.sales_rep || "")
+    .split(";").map((x) => x.trim()).filter(Boolean);
 
-// Month boundaries in Cyprus time. Cyprus is UTC+2/+3, so a month starts a
-// couple of hours before UTC midnight; Date.UTC minus the offset is close
-// enough for month-scale reporting and never lands mid-day.
-function monthRange(year: number, month: number, label: string): Range {
-  const off = 3 * 3600000;
+type Range = { start: number; end: number; label: string; short: string };
+
+const MON = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const OFF = 3 * 3600000;   // Cyprus is UTC+2/+3; close enough at month scale
+
+function monthRange(year: number, month: number): Range {
   return {
-    start: Date.UTC(year, month, 1) - off,
-    end: Date.UTC(year, month + 1, 1) - off,
-    label,
+    start: Date.UTC(year, month, 1) - OFF,
+    end: Date.UTC(year, month + 1, 1) - OFF,
+    label: `${MON[month]} ${year}`,
+    short: `${SHORT[month]} ${String(year).slice(2)}`,
   };
 }
 
 function periodsFor(period: string, now: { date: string }): { cur: Range; prev: Range } {
   const [y, m] = now.date.split("-").map(Number);
-  const MON = ["January","February","March","April","May","June","July","August","September","October","November","December"];
   if (period === "year") {
-    const off = 3 * 3600000;
     return {
-      cur: { start: Date.UTC(y, 0, 1) - off, end: Date.now(), label: `${y} so far` },
-      prev: { start: Date.UTC(y - 1, 0, 1) - off, end: Date.UTC(y, 0, 1) - off, label: String(y - 1) },
+      cur: { start: Date.UTC(y, 0, 1) - OFF, end: Date.now(), label: `${y} so far`, short: String(y) },
+      prev: { start: Date.UTC(y - 1, 0, 1) - OFF, end: Date.UTC(y, 0, 1) - OFF, label: String(y - 1), short: String(y - 1) },
     };
   }
   if (period === "last-month") {
-    const lm = m - 2, ly = lm < 0 ? y - 1 : y, lmi = (lm + 12) % 12;
-    const pm = m - 3, py = pm < 0 ? y - 1 : y, pmi = (pm + 12) % 12;
-    return { cur: monthRange(ly, lmi, `${MON[lmi]} ${ly}`), prev: monthRange(py, pmi, `${MON[pmi]} ${py}`) };
+    const lm = m - 2, ly = lm < 0 ? y - 1 : y;
+    const pm = m - 3, py = pm < 0 ? y - 1 : y;
+    return { cur: monthRange(ly, (lm + 12) % 12), prev: monthRange(py, (pm + 12) % 12) };
   }
-  // this-month: current month to date, against the whole of last month
-  const off = 3 * 3600000;
-  const pm = m - 2, py = pm < 0 ? y - 1 : y, pmi = (pm + 12) % 12;
+  const pm = m - 2, py = pm < 0 ? y - 1 : y;
   return {
-    cur: { start: Date.UTC(y, m - 1, 1) - off, end: Date.now(), label: `${MON[m - 1]} ${y} so far` },
-    prev: monthRange(py, pmi, `${MON[pmi]} ${py}`),
+    cur: {
+      start: Date.UTC(y, m - 1, 1) - OFF, end: Date.now(),
+      label: `${MON[m - 1]} ${y} so far`, short: `${SHORT[m - 1]} so far`,
+    },
+    prev: monthRange(py, (pm + 12) % 12),
   };
 }
 
@@ -124,19 +139,18 @@ const median = (xs: number[]): number | null => {
 };
 
 const secs = (ms: number | null) => ms == null ? "-" : `${Math.round(ms / 1000)}s`;
-
-// A count with its previous-period value beneath it, so every figure carries
-// its own comparison rather than needing a second table.
-const withPrev = (cur: number, prev: number) => `${cur}  (${prev})`;
+const pair = (cur: string | number, prev: string | number) => `${cur}  (${prev})`;
 
 type RepRow = {
   name: string;
   calls: number; callsPrev: number;
   dur: number | null; durPrev: number | null;
-  meetings: number; meetingsPrev: number;
   created: number; createdPrev: number;
+  meetings: number; meetingsPrev: number;
   converted: number; convertedPrev: number;
   disengaged: number; disengagedPrev: number;
+  // cohort: of the deals CREATED this period, how many have since reached...
+  cohort: number; cohortMeeting: number; cohortConverted: number; cohortDiseng: number;
 };
 
 async function callsFor(token: string, ownerId: string, r: Range) {
@@ -158,7 +172,9 @@ async function callsFor(token: string, ownerId: string, r: Range) {
   return { count: rows.length, median: median(durations) };
 }
 
-async function dealsEntering(token: string, pipeline: string, prop: string, r: Range) {
+async function dealsEntering(
+  token: string, pipeline: string, prop: string, r: Range, extra: string[] = [],
+) {
   return await hsSearch(token, "deals", {
     filterGroups: [{
       filters: [
@@ -167,20 +183,10 @@ async function dealsEntering(token: string, pipeline: string, prop: string, r: R
         { propertyName: prop, operator: "LT", value: String(r.end) },
       ],
     }],
-    properties: ["dealname", "sales_rep", prop],
+    properties: ["dealname", "sales_rep", prop, ...extra],
     limit: 100,
   }, 20);
 }
-
-const tally = (rows: any[]) => {
-  const m = new Map<string, number>();
-  for (const d of rows) {
-    const rep = String(d.properties?.sales_rep || "").trim();
-    if (!isRep(rep)) continue;
-    m.set(rep, (m.get(rep) || 0) + 1);
-  }
-  return m;
-};
 
 type Section = { title: string; note?: string; cols: { t: string; w: number }[]; rows: string[][]; lines?: string[] };
 
@@ -204,12 +210,13 @@ async function buildPdf(title: string, subtitle: string, sections: Section[]): P
       }
       y -= 20;
     };
-    if (y < 130) newPage();
+    if (y < 150) newPage();
     page.drawText(clean(sec.title.toUpperCase()), { x: M, y, size: 10, font: bold, color: COLORS.navy });
     page.drawLine({ start: { x: M, y: y - 4 }, end: { x: M + 150, y: y - 4 }, thickness: 1.2, color: COLORS.blue });
     y -= 14;
     if (sec.note) {
       for (const ln of wrap(sec.note, W - 2 * M, 8, font)) {
+        if (y < 60) newPage();
         page.drawText(clean(ln), { x: M, y, size: 8, font, color: COLORS.note });
         y -= 10;
       }
@@ -270,7 +277,6 @@ Deno.serve(async (req) => {
     const settings = await getSettings();
     const body = await req.json().catch(() => ({}));
 
-    // Console (passcode) or cron (secret). Either is fine; neither means no.
     const byPass = settings.admin_passcode && String(body.passcode ?? "") === settings.admin_passcode;
     const byCron = req.headers.get("x-cron-secret") === settings.cron_secret;
     if (!byPass && !byCron) return json({ error: "unauthorized" }, 401);
@@ -285,6 +291,15 @@ Deno.serve(async (req) => {
     const token = settings.hubspot_token;
     if (!token) return json({ skipped: true, reason: "hubspot_token not set" });
 
+    // The current Sales roster, from the portal rather than from HubSpot's
+    // picklist of everyone who ever sold.
+    stage = "roster";
+    const { data: admins } = await supabase
+      .from("sales_admins").select("name").eq("active", true);
+    const roster = new Map<string, string>();   // normalised -> display name
+    for (const a of (admins || [])) if (a.name) roster.set(norm(a.name), a.name);
+    if (!roster.size) return json({ skipped: true, reason: "no active sales reps on the roster" });
+
     const pipeline = settings.sales_deals_pipeline || "default";
     const convStage = (settings.sales_deals_converted_stages || "249514588,closedwon").split(",")[0].trim();
 
@@ -294,52 +309,82 @@ Deno.serve(async (req) => {
     for (const [id, st] of pipeInfo.stages) {
       if (String(st.label).toLowerCase().replace(/[^a-z]/g, "").includes("quotesent")) { quoteSentId = id; break; }
     }
+    const QUOTE = quoteSentId ? `hs_v2_date_entered_${quoteSentId}` : "";
+    const CONV = `hs_v2_date_entered_${convStage}`;
+    const LOST = "hs_v2_date_entered_closedlost";
 
     stage = "owners";
     const { names: ownerNames } = await fetchOwners(token);
-
-    // Sequential, not Promise.all: the pacer would serialise these anyway, and
-    // running them in order keeps the `stage` label meaningful if one fails.
-    stage = "deals";
-    const dealsFor = async (r: Range) => ({
-      created: await dealsEntering(token, pipeline, "createdate", r),
-      meetings: quoteSentId ? await dealsEntering(token, pipeline, `hs_v2_date_entered_${quoteSentId}`, r) : [],
-      converted: await dealsEntering(token, pipeline, `hs_v2_date_entered_${convStage}`, r),
-      disengaged: await dealsEntering(token, pipeline, "hs_v2_date_entered_closedlost", r),
-    });
-    const dCur = await dealsFor(cur);
-    const dPrev = await dealsFor(prev);
-
-    const t = {
-      created: tally(dCur.created), createdPrev: tally(dPrev.created),
-      meetings: tally(dCur.meetings), meetingsPrev: tally(dPrev.meetings),
-      converted: tally(dCur.converted), convertedPrev: tally(dPrev.converted),
-      disengaged: tally(dCur.disengaged), disengagedPrev: tally(dPrev.disengaged),
-    };
-
-    // Everyone who appears anywhere in the deal data. A rep with calls but no
-    // deals still belongs in the table - that gap is what the report is for.
-    const repNames = new Set<string>();
-    for (const m of Object.values(t)) for (const k of m.keys()) repNames.add(k);
     const ownerByName = new Map<string, string>();
     for (const [id, nm] of ownerNames) if (nm) ownerByName.set(norm(nm), id);
+
+    // Only people on the roster get a row. A shared deal credits every rep
+    // named on it who is on the roster.
+    const tally = (rows: any[]) => {
+      const m = new Map<string, number>();
+      for (const d of rows) {
+        for (const r of repsOn(d)) {
+          const key = norm(r);
+          if (!roster.has(key)) continue;
+          m.set(key, (m.get(key) || 0) + 1);
+        }
+      }
+      return m;
+    };
+
+    stage = "deals";
+    const cohortProps = [QUOTE, CONV, LOST].filter(Boolean);
+    const createdCur = await dealsEntering(token, pipeline, "createdate", cur, cohortProps);
+    const createdPrv = await dealsEntering(token, pipeline, "createdate", prev);
+    const meetCur = QUOTE ? await dealsEntering(token, pipeline, QUOTE, cur) : [];
+    const meetPrv = QUOTE ? await dealsEntering(token, pipeline, QUOTE, prev) : [];
+    const convCur = await dealsEntering(token, pipeline, CONV, cur);
+    const convPrv = await dealsEntering(token, pipeline, CONV, prev);
+    const lostCur = await dealsEntering(token, pipeline, LOST, cur);
+    const lostPrv = await dealsEntering(token, pipeline, LOST, prev);
+
+    const t = {
+      created: tally(createdCur), createdPrev: tally(createdPrv),
+      meetings: tally(meetCur), meetingsPrev: tally(meetPrv),
+      converted: tally(convCur), convertedPrev: tally(convPrv),
+      disengaged: tally(lostCur), disengagedPrev: tally(lostPrv),
+    };
+
+    // Cohort: follow the deals CREATED this period and see how far they got.
+    // The same set of deals throughout, so these ratios cannot exceed 100%.
+    const has = (d: any, p: string) => !!p && String(d.properties?.[p] ?? "").trim() !== "";
+    const coh = new Map<string, { n: number; meeting: number; conv: number; lost: number }>();
+    for (const d of createdCur) {
+      for (const r of repsOn(d)) {
+        const key = norm(r);
+        if (!roster.has(key)) continue;
+        const c = coh.get(key) || { n: 0, meeting: 0, conv: 0, lost: 0 };
+        c.n++;
+        if (has(d, QUOTE)) c.meeting++;
+        if (has(d, CONV)) c.conv++;
+        if (has(d, LOST)) c.lost++;
+        coh.set(key, c);
+      }
+    }
 
     stage = "calls";
     const rows: RepRow[] = [];
     const unmatched: string[] = [];
-    for (const name of [...repNames].sort()) {
-      const oid = ownerByName.get(norm(name));
-      if (!oid) unmatched.push(name);
+    for (const [key, display] of [...roster.entries()].sort((a, b) => a[1].localeCompare(b[1]))) {
+      const oid = ownerByName.get(key);
+      if (!oid) unmatched.push(display);
       const c = oid ? await callsFor(token, oid, cur) : { count: 0, median: null };
       const cp = oid ? await callsFor(token, oid, prev) : { count: 0, median: null };
+      const k = coh.get(key) || { n: 0, meeting: 0, conv: 0, lost: 0 };
       rows.push({
-        name,
+        name: display,
         calls: c.count, callsPrev: cp.count,
         dur: c.median, durPrev: cp.median,
-        meetings: t.meetings.get(name) || 0, meetingsPrev: t.meetingsPrev.get(name) || 0,
-        created: t.created.get(name) || 0, createdPrev: t.createdPrev.get(name) || 0,
-        converted: t.converted.get(name) || 0, convertedPrev: t.convertedPrev.get(name) || 0,
-        disengaged: t.disengaged.get(name) || 0, disengagedPrev: t.disengagedPrev.get(name) || 0,
+        created: t.created.get(key) || 0, createdPrev: t.createdPrev.get(key) || 0,
+        meetings: t.meetings.get(key) || 0, meetingsPrev: t.meetingsPrev.get(key) || 0,
+        converted: t.converted.get(key) || 0, convertedPrev: t.convertedPrev.get(key) || 0,
+        disengaged: t.disengaged.get(key) || 0, disengagedPrev: t.disengagedPrev.get(key) || 0,
+        cohort: k.n, cohortMeeting: k.meeting, cohortConverted: k.conv, cohortDiseng: k.lost,
       });
     }
     rows.sort((a, b) => b.converted - a.converted || b.created - a.created || a.name.localeCompare(b.name));
@@ -350,59 +395,61 @@ Deno.serve(async (req) => {
 
     const funnelRows = rows.map((r) => [
       r.name,
-      withPrev(r.calls, r.callsPrev),
-      `${secs(r.dur)}  (${secs(r.durPrev)})`,
-      withPrev(r.meetings, r.meetingsPrev),
-      withPrev(r.created, r.createdPrev),
-      withPrev(r.converted, r.convertedPrev),
-      withPrev(r.disengaged, r.disengagedPrev),
+      pair(r.calls, r.callsPrev),
+      pair(secs(r.dur), secs(r.durPrev)),
+      pair(r.created, r.createdPrev),
+      pair(r.meetings, r.meetingsPrev),
+      pair(r.converted, r.convertedPrev),
+      pair(r.disengaged, r.disengagedPrev),
     ]);
     if (rows.length) {
       funnelRows.push([
         "TEAM",
-        withPrev(sum((r) => r.calls), sum((r) => r.callsPrev)),
+        pair(sum((r) => r.calls), sum((r) => r.callsPrev)),
         "-",
-        withPrev(sum((r) => r.meetings), sum((r) => r.meetingsPrev)),
-        withPrev(sum((r) => r.created), sum((r) => r.createdPrev)),
-        withPrev(sum((r) => r.converted), sum((r) => r.convertedPrev)),
-        withPrev(sum((r) => r.disengaged), sum((r) => r.disengagedPrev)),
+        pair(sum((r) => r.created), sum((r) => r.createdPrev)),
+        pair(sum((r) => r.meetings), sum((r) => r.meetingsPrev)),
+        pair(sum((r) => r.converted), sum((r) => r.convertedPrev)),
+        pair(sum((r) => r.disengaged), sum((r) => r.disengagedPrev)),
       ]);
     }
 
     const ratioRows = rows.map((r) => [
       r.name,
-      pct(r.meetings, r.calls),
-      pct(r.created, r.meetings),
-      pct(r.converted, r.created),
-      pct(r.converted, r.calls),
+      String(r.cohort),
+      pct(r.cohortMeeting, r.cohort),
+      pct(r.cohortConverted, r.cohort),
+      pct(r.cohortDiseng, r.cohort),
+      r.calls ? (r.created / r.calls).toFixed(2) : "-",
     ]);
     if (rows.length) {
       ratioRows.push([
         "TEAM",
-        pct(sum((r) => r.meetings), sum((r) => r.calls)),
-        pct(sum((r) => r.created), sum((r) => r.meetings)),
-        pct(sum((r) => r.converted), sum((r) => r.created)),
-        pct(sum((r) => r.converted), sum((r) => r.calls)),
+        String(sum((r) => r.cohort)),
+        pct(sum((r) => r.cohortMeeting), sum((r) => r.cohort)),
+        pct(sum((r) => r.cohortConverted), sum((r) => r.cohort)),
+        pct(sum((r) => r.cohortDiseng), sum((r) => r.cohort)),
+        sum((r) => r.calls) ? (sum((r) => r.created) / sum((r) => r.calls)).toFixed(2) : "-",
       ]);
     }
 
     const sections: Section[] = [
       {
-        title: "The funnel, by sales rep",
-        note: `${cur.label}, with ${prev.label} in brackets. Connected calls are calls whose outcome is "Connected". Duration is the median of those calls that have a duration recorded. Meetings are deals that reached Quote sent.`,
+        title: `Activity — ${cur.label}`,
+        note: `HOW TO READ THIS TABLE: every cell shows ${cur.label} first, then ${prev.label} in brackets. So "49 (63)" means 49 in ${cur.short} against 63 in ${prev.short}. Each column counts what happened during the period: calls connected, deals created, deals that reached Quote sent (the lawyer meeting), deals converted, deals disengaged. A deal shared between two reps counts for both.`,
         cols: [
-          { t: "Sales rep", w: 108 }, { t: "Conn. calls", w: 70 }, { t: "Median call", w: 72 },
-          { t: "Meetings", w: 62 }, { t: "Created", w: 62 }, { t: "Converted", w: 68 },
-          { t: "Diseng.", w: 73 },
+          { t: "Sales rep", w: 105 }, { t: "Conn. calls", w: 72 }, { t: "Median call", w: 76 },
+          { t: "Created", w: 62 }, { t: "Meetings", w: 66 }, { t: "Converted", w: 68 },
+          { t: "Diseng.", w: 66 },
         ],
         rows: funnelRows,
       },
       {
-        title: "Where each rep leaks",
-        note: `Conversion between funnel stages for ${cur.label}. A low call-to-meeting rate and a high meeting-to-deal rate mean different problems: the first is about who is being called, the second about what happens in the meeting.`,
+        title: `What became of the deals created in ${cur.label}`,
+        note: `A conversion rate has to follow the SAME deals, so this table takes only the deals created in ${cur.label} and asks how far they have got since. That is why these percentages can never exceed 100%. It is deliberately NOT one column of the table above divided by another: most deals converting in ${cur.short} were created months earlier, so that division would compare two different sets of deals. The last column is deals created per connected call.`,
         cols: [
-          { t: "Sales rep", w: 150 }, { t: "Call → meeting", w: 95 }, { t: "Meeting → deal", w: 95 },
-          { t: "Deal → converted", w: 100 }, { t: "Call → converted", w: 75 },
+          { t: "Sales rep", w: 118 }, { t: "Deals created", w: 78 }, { t: "Reached meeting", w: 96 },
+          { t: "Converted", w: 78 }, { t: "Disengaged", w: 78 }, { t: "Deals per call", w: 67 },
         ],
         rows: ratioRows,
       },
@@ -410,8 +457,8 @@ Deno.serve(async (req) => {
 
     if (unmatched.length) {
       sections.push({
-        title: "Not matched to a HubSpot user",
-        note: "Deals are attributed by the sales_rep property (a name); calls are attributed by HubSpot owner. These names had no matching owner, so their call figures above read zero rather than being genuinely zero.",
+        title: "No matching HubSpot user",
+        note: "Calls are attributed by HubSpot owner. These reps are on the Sales roster but no HubSpot user matched their name, so their call figures above read zero rather than being genuinely zero.",
         cols: [], rows: [],
         lines: unmatched.map((u, i) => `${i + 1}. ${u}`),
       });
@@ -434,14 +481,14 @@ Deno.serve(async (req) => {
     const html = `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#ffffff">
   <div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.65;color:#101418;padding:22px 24px">
     <p style="margin:0 0 14px">Dear all,</p>
-    <p style="margin:0 0 14px">Sales rep performance for <b>${cur.label}</b>, with ${prev.label} shown in brackets for comparison.</p>
+    <p style="margin:0 0 14px">Sales rep performance for <b>${cur.label}</b>. Each figure shows ${cur.label}, with ${prev.label} in brackets for comparison.</p>
     <table style="border-collapse:collapse;margin:14px 0">
-      <tr><th style="${th}">Sales rep</th><th style="${th}">Connected calls</th><th style="${th}">Meetings</th><th style="${th}">Created</th><th style="${th}">Converted</th></tr>
+      <tr><th style="${th}">Sales rep</th><th style="${th}">Connected calls</th><th style="${th}">Deals created</th><th style="${th}">Meetings</th><th style="${th}">Converted</th></tr>
       ${rows.map((r) =>
-        `<tr><td style="${td}">${r.name}</td><td style="${td};text-align:center">${r.calls} (${r.callsPrev})</td><td style="${td};text-align:center">${r.meetings} (${r.meetingsPrev})</td><td style="${td};text-align:center">${r.created} (${r.createdPrev})</td><td style="${td};text-align:center">${r.converted} (${r.convertedPrev})</td></tr>`
+        `<tr><td style="${td}">${r.name}</td><td style="${td};text-align:center">${r.calls} (${r.callsPrev})</td><td style="${td};text-align:center">${r.created} (${r.createdPrev})</td><td style="${td};text-align:center">${r.meetings} (${r.meetingsPrev})</td><td style="${td};text-align:center">${r.converted} (${r.convertedPrev})</td></tr>`
       ).join("")}
     </table>
-    <p style="margin:0 0 24px">The attached PDF adds median call duration, disengaged deals, and the conversion rate between each funnel stage.</p>
+    <p style="margin:0 0 24px">The attached PDF adds median call duration, disengaged deals, and what has since become of the deals created in ${cur.label}.</p>
     ${settings.email_signature || ""}
   </div>
 </body></html>`;
@@ -455,7 +502,7 @@ Deno.serve(async (req) => {
       period,
       current: cur.label,
       previous: prev.label,
-      reps: rows.length,
+      reps: rows.map((x) => x.name),
       unmatched,
       to,
       detail: r.detail,
