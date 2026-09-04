@@ -6,7 +6,8 @@
 // conversion rate / EUR value); conversions that ENTERED the Converted stage during
 // the week whatever week they were created; disengaged-this-week split by whether the
 // deal ever reached "Quote sent" (the lawyer meeting), each with the Closed Lost
-// Reason; and a hygiene list of new-business deals with no sales_rep recorded.
+// Reason and the free-text Closed Lost Detail; and a hygiene list of new-business
+// deals with no sales_rep recorded.
 //
 // force:true bypasses the window; force + to => preview (no send_log row, [PREVIEW]
 // subject). On a forced run outside the scheduled day the window becomes
@@ -40,6 +41,7 @@ const DEAL_PROPS = [
   "amount",
   "dealtype",
   "closed_lost_reason",
+  "closed_lost_detail",
   "hs_v2_date_entered_249514588",
   "hubspot_owner_id",
 ];
@@ -377,7 +379,13 @@ Deno.serve(async (req) => {
     const lostRowsOf = (list: any[]) =>
       list.map((d, i) => {
         const p = d.properties || {};
-        return [String(i + 1), raw(p.dealname), repOf(d), raw(p.closed_lost_reason)];
+        return [
+          String(i + 1),
+          raw(p.dealname),
+          repOf(d),
+          raw(p.closed_lost_reason),
+          raw(p.closed_lost_detail),
+        ];
       });
     const beforeRows = lostRowsOf(lostBefore);
     const afterRows = lostRowsOf(lostAfter);
@@ -410,19 +418,19 @@ Deno.serve(async (req) => {
         ? [
           {
             title: "Disengaged this week — before the lawyer meeting",
-            note: `Deals that entered Disengaged ${prettyRange} without reaching Quote sent — dropped before the meeting with the lawyer. Reason as recorded on the deal.`,
+            note: `Deals that entered Disengaged ${prettyRange} without reaching Quote sent — dropped before the meeting with the lawyer. Reason and detail as recorded on the deal.`,
             cols: [
-              { t: "#", w: 24 }, { t: "Deal", w: 170 }, { t: "Sales rep", w: 105 },
-              { t: "Reason", w: 165 },
+              { t: "#", w: 22 }, { t: "Deal", w: 150 }, { t: "Sales rep", w: 88 },
+              { t: "Reason", w: 125 }, { t: "Detail", w: 130 },
             ],
             rows: beforeRows,
           },
           {
             title: "Disengaged this week — after the lawyer meeting",
-            note: `Deals that reached Quote sent or later (the lawyer meeting happened) then entered Disengaged ${prettyRange}. Reason as recorded on the deal.`,
+            note: `Deals that reached Quote sent or later (the lawyer meeting happened) then entered Disengaged ${prettyRange}. Reason and detail as recorded on the deal.`,
             cols: [
-              { t: "#", w: 24 }, { t: "Deal", w: 170 }, { t: "Sales rep", w: 105 },
-              { t: "Reason", w: 165 },
+              { t: "#", w: 22 }, { t: "Deal", w: 150 }, { t: "Sales rep", w: 88 },
+              { t: "Reason", w: 125 }, { t: "Detail", w: 130 },
             ],
             rows: afterRows,
           },
@@ -430,10 +438,10 @@ Deno.serve(async (req) => {
         : [
           {
             title: "Disengaged this week",
-            note: `Deals that entered Disengaged ${prettyRange}, with the reason recorded on the deal. (Quote sent stage not found — not split.)`,
+            note: `Deals that entered Disengaged ${prettyRange}, with the reason and detail recorded on the deal. (Quote sent stage not found — not split.)`,
             cols: [
-              { t: "#", w: 24 }, { t: "Deal", w: 170 }, { t: "Sales rep", w: 105 },
-              { t: "Reason", w: 165 },
+              { t: "#", w: 22 }, { t: "Deal", w: 150 }, { t: "Sales rep", w: 88 },
+              { t: "Reason", w: 125 }, { t: "Detail", w: 130 },
             ],
             rows: beforeRows,
           },
@@ -481,7 +489,7 @@ Deno.serve(async (req) => {
     <p style="margin:0 0 14px">Dear all,</p>
     <p style="margin:0 0 6px">Please find below the weekly Sales deals report for <b>${prettyRange}</b>${partial ? " (week in progress)" : ""}: ${tot.created} deal${tot.created === 1 ? "" : "s"} created by the sales team, ${convRep.length} conversion${convRep.length === 1 ? "" : "s"} this week (${eur(convValue)}), ${lostRep.length} disengaged.</p>
     ${tableHtml}
-    <p style="margin:0 0 24px">The attached PDF adds this week's conversions and the disengaged leads with reasons, split into those that dropped before the lawyer meeting (Quote sent) and those that disengaged after it${hygiene.length ? ", plus " + hygiene.length + " deal" + (hygiene.length === 1 ? "" : "s") + " missing a sales rep" : ""}.</p>
+    <p style="margin:0 0 24px">The attached PDF adds this week's conversions and the disengaged leads with reasons and detail, split into those that dropped before the lawyer meeting (Quote sent) and those that disengaged after it${hygiene.length ? ", plus " + hygiene.length + " deal" + (hygiene.length === 1 ? "" : "s") + " missing a sales rep" : ""}.</p>
     ${settings.email_signature || ""}
   </div>
 </body></html>`;
