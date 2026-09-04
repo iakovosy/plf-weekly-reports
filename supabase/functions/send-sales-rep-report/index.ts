@@ -21,7 +21,9 @@
 //
 // METRIC DEFINITIONS - the call metrics were verified against the live HubSpot
 // dashboard before being coded, because a report that quietly disagrees with
-// the dashboard everyone reads is worse than no report:
+// the dashboard everyone reads is worse than no report. These definitions used
+// to be printed on the first page of the PDF; that page has been removed, so
+// this comment is now the only place they are written down. Keep it accurate:
 //
 //   Connected calls   calls whose OUTCOME (hs_call_disposition) is "Connected".
 //                     This is the call outcome, NOT hs_call_status: status
@@ -428,24 +430,8 @@ Deno.serve(async (req) => {
 
     const sections: Section[] = [
       {
-        title: `Activity — ${cur.label}`,
-        note: `Every figure below is ${cur.label}. What each column counts:`,
-        cols: [], rows: [],
-        lines: [
-          "Connected calls     - calls whose outcome was recorded as Connected.",
-          "Median call         - the middle length of those connected calls.",
-          "Meetings scheduled  - a deal is created when a meeting is booked with the lead,",
-          "                      at the Meeting Scheduled stage. The meeting and the deal",
-          "                      are the same event, counted once.",
-          "Quote sent          - deals that reached the Quote sent stage during the period.",
-          "                      A later milestone than the meeting, not the same thing.",
-          "Converted           - deals that reached the Converted stage during the period.",
-          "",
-          "A deal shared between two reps is counted for both.",
-        ],
-      },
-      {
         title: `By sales rep — ${cur.label}`,
+        note: "A deal shared between two reps is counted for both.",
         cols: [
           { t: "Sales rep", w: 110 }, { t: "Conn. calls", w: 75 }, { t: "Median call", w: 75 },
           { t: "Meetings scheduled", w: 105 }, { t: "Quote sent", w: 75 }, { t: "Converted", w: 75 },
